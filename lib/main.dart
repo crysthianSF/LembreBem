@@ -3,7 +3,7 @@ import 'package:lembrebem/backend/supabase_backend.dart';
 import 'package:lembrebem/telas/fundo_decorado.dart';
 import 'package:lembrebem/telas/tela_inicial.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   String? startupError;
