@@ -35,7 +35,7 @@ class FundoDecorado extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Material(
       color: corFundo,
       child: Stack(
         children: [

@@ -260,8 +260,9 @@ class _TelaLoginState extends State<TelaLogin> {
                         onPressed: _login,
                       ),
                       const SizedBox(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           const Text(
                             'Não tem uma conta? ',
