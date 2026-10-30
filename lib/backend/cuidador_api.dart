@@ -178,4 +178,25 @@ class CuidadorApi {
       };
     });
   }
+
+  /// Emite convite de vínculo SEC-01:
+  Future<String> emitirConviteCuidador({required String cuidadorId}) async {
+    final user = _app.auth.currentUser;
+    if (user == null) {
+      throw StateError('Usuário precisa estar autenticado como paciente.');
+    }
+
+    // Gera um token aleatório único para a tentativa
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    final tokenOriginal = 'conv_${user.id.substring(0, 8)}_$timestamp';
+
+    // Chama a RPC passando estritamente o cuidador de destino e o token gerado
+    await _app.rpc('emitir_convite_paciente', params: {
+      'p_cuidador_id': cuidadorId,
+      'p_token_hash': tokenOriginal,
+    }).timeout(_timeout);
+
+    return tokenOriginal;
+  }
+
 }
