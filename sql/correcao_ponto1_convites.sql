@@ -1,4 +1,3 @@
--- Ponto 1 de SEC-01: Tabela de convites seguros e emissão restrita ao paciente
 create table if not exists app.convites_vinculacao (
     id uuid primary key default gen_random_uuid(),
     paciente_id uuid not null references app.usuarios(id) on delete cascade,
@@ -30,6 +29,7 @@ declare
     v_paciente_id uuid;
     v_convite_id uuid;
 begin
+
     v_paciente_id := auth.uid();
     
     if v_paciente_id is null then
@@ -71,3 +71,50 @@ $$;
 
 revoke execute on function app.emitir_convite_paciente(uuid, text) from public;
 grant execute on function app.emitir_convite_paciente(uuid, text) to authenticated;
+
+create table if not exists app.tentativas_vinculacao (
+    id uuid primary key default gen_random_uuid(),
+    usuario_id uuid not null references app.cuidadores(id) on delete cascade,
+    sucesso boolean not null default false,
+    tentado_em timestamptz not null default now()
+);
+
+alter table app.tentativas_vinculacao enable row level security;
+revoke all on app.tentativas_vinculacao from public, anon, authenticated;
+
+create or replace function app.verificar_rate_limit_cuidador(p_cuidador_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = app, public
+as $$
+declare
+    v_erros_recentes int;
+begin
+    select count(*) into v_erros_recentes
+    from app.tentativas_vinculacao
+    where usuario_id = p_cuidador_id
+      and sucesso = false
+      and tentado_em > (now() - interval '15 minutes');
+
+    if v_erros_recentes >= 5 then
+        return false;
+    end if;
+
+    return true;
+end;
+$$;
+
+create or replace function app.vincular_paciente(codigo text)
+returns uuid
+language plpgsql
+security definer
+set search_path = app, public
+as $$
+begin
+    raise exception 'Este método foi descontinuado permanentemente por segurança (SEC-01). Utilize o fluxo seguro de convites temporários.';
+end;
+$$;
+
+revoke execute on function app.vincular_paciente(text) from public;
+grant execute on function app.vincular_paciente(text) to authenticated;
