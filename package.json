@@ -2,19 +2,17 @@
   "name": "lembrebem-catalogo-pmc",
   "version": "1.0.0",
   "private": true,
-  "description": "API REST e importador da base PMC/CMED para o projeto LembreBem.",
+  "description": "API REST do catalogo de medicamentos do projeto LembreBem.",
   "scripts": {
     "api": "node api/src/servidor.js",
     "api:dev": "nodemon api/src/servidor.js",
-    "importar:pmc": "node scripts/importar_pmc.js",
-    "importar:pmc:validar": "node scripts/importar_pmc.js --somente-validar"
+    "test": "node --test api/test/*.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "pg": "^8.13.3",
-    "xlsx": "^0.18.5"
+    "pg": "^8.13.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

@@ -57,7 +57,7 @@ process.on('SIGTERM', () => {
   encerrarServidor('SIGTERM');
 });
 
-iniciar().catch((erro) => {
-  console.error('[API] Falha ao iniciar a API do catalogo:', erro.message);
+iniciar().catch(() => {
+  console.error('[API] Falha ao iniciar a API do catalogo. Verifique a configuracao e o certificado do banco.');
   process.exit(1);
 });

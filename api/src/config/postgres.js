@@ -1,6 +1,7 @@
 const dns = require('dns');
 const { Pool } = require('pg');
 const { garantirUrlBanco } = require('./ambiente');
+const { opcoesBanco } = require('./tls_banco');
 
 let pool;
 
@@ -11,16 +12,15 @@ function obterPool() {
     dns.setDefaultResultOrder('ipv4first');
 
     pool = new Pool({
-      connectionString: garantirUrlBanco(),
+      ...opcoesBanco(garantirUrlBanco(), process.env.DATABASE_CA_CERT_PATH),
       family: 4,
-      ssl: { rejectUnauthorized: false },
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     });
 
-    pool.on('error', (erro) => {
-      console.error('[Banco] Erro inesperado no pool PostgreSQL:', erro.message);
+    pool.on('error', () => {
+      console.error('[Banco] Erro inesperado no pool PostgreSQL.');
     });
   }
 

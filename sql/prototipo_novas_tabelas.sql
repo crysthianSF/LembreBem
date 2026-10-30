@@ -233,6 +233,8 @@ create policy contatos_emergencia_cuidador on app.contatos_emergencia
 -- ----------------------------------------------------------------------------
 -- 7) REGISTRO DE DOSES (linha do tempo + relatorios do cuidador)
 -- ----------------------------------------------------------------------------
+-- Depois deste script, executar a migracao sec03_doses_mesmo_dono em supabase/migrations,
+-- inclusive quando registro_doses ja existir.
 create table if not exists app.registro_doses (
   id                uuid primary key default gen_random_uuid(),
   usuario_id        uuid not null references app.usuarios (id) on delete cascade,
