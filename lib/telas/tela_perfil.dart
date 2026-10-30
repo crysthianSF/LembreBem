@@ -32,7 +32,6 @@ class _TelaPerfilState extends State<TelaPerfil> {
   final _cpfController = TextEditingController();
   final _emailController = TextEditingController();
   final _nascimentoController = TextEditingController();
-  final _senhaController = TextEditingController();
   final _telefoneController = TextEditingController();
   final _cepController = TextEditingController();
   final _logradouroController = TextEditingController();
@@ -60,7 +59,6 @@ class _TelaPerfilState extends State<TelaPerfil> {
       _cpfController,
       _emailController,
       _nascimentoController,
-      _senhaController,
       _telefoneController,
       _cepController,
       _logradouroController,
@@ -124,7 +122,6 @@ class _TelaPerfilState extends State<TelaPerfil> {
     _cpfController.text = p.cpf;
     _emailController.text = p.email;
     _nascimentoController.text = p.dataNascimento;
-    _senhaController.text = p.senha;
     _telefoneController.text = p.telefone;
     _cepController.text = p.cep;
     _logradouroController.text = p.logradouro;
@@ -156,7 +153,6 @@ class _TelaPerfilState extends State<TelaPerfil> {
       email: _emailController.text.trim(),
       dataNascimento: _nascimentoController.text.trim(),
       telefone: _telefoneController.text.trim(),
-      senha: _senhaController.text,
       fotoDataUrl: _fotoDataUrl,
       cep: _cepController.text.trim(),
       logradouro: _logradouroController.text.trim(),
@@ -172,7 +168,7 @@ class _TelaPerfilState extends State<TelaPerfil> {
     );
 
     try {
-      final salvo = await _perfilApi.salvarPerfil(atualizado);
+      final salvo = await _perfilApi.salvarPerfil(atualizado); // linha 175
       if (!mounted) {
         return;
       }
@@ -465,13 +461,6 @@ class _TelaPerfilState extends State<TelaPerfil> {
                             : null,
                   ),
                   _campoPerfil(
-                    icone: Icons.lock_outline,
-                    rotulo: 'Senha',
-                    valor: p.senha.isEmpty ? '••••••••' : '••••••••',
-                    controller: _senhaController,
-                    senha: true,
-                  ),
-                  _campoPerfil(
                     icone: Icons.phone_outlined,
                     rotulo: 'Número de telefone',
                     valor: p.telefone,
@@ -622,6 +611,14 @@ class _TelaPerfilState extends State<TelaPerfil> {
                       texto: 'Editar informações',
                       onPressed: _iniciarEdicao,
                     ),
+                    // const SizedBox(height: 10),
+                    // BotaoPrimario(
+                    //   texto: 'Alterar senha',
+                    //   icone: Icons.lock_outline,
+                    //   contorno: true,
+                    //   cor: corPrimariaEscura,
+                    //   onPressed: _abrirAlteracaoSenha,
+                    // ),
                     const SizedBox(height: 10),
                     BotaoPrimario(
                       texto: 'Sair da conta',
@@ -762,7 +759,6 @@ class _TelaPerfilState extends State<TelaPerfil> {
     required String valor,
     required TextEditingController controller,
     String? dica,
-    bool senha = false,
     Widget? sufixo,
     Color corIcone = corPrimariaEscura,
     int maxLinhas = 1,
@@ -804,8 +800,8 @@ class _TelaPerfilState extends State<TelaPerfil> {
                   if (_editando)
                     TextField(
                       controller: controller,
-                      obscureText: senha,
-                      maxLines: senha ? 1 : maxLinhas,
+                      obscureText: false,
+                      maxLines: maxLinhas,
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF1F2937),
@@ -820,7 +816,7 @@ class _TelaPerfilState extends State<TelaPerfil> {
                     )
                   else
                     Text(
-                      valor.isEmpty ? '—' : (senha ? '••••••••' : valor),
+                      valor.isEmpty ? '—' : valor,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,

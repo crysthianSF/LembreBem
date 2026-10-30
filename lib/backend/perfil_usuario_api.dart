@@ -10,7 +10,6 @@ class PerfilUsuario {
     required this.email,
     required this.dataNascimento,
     required this.telefone,
-    required this.senha,
     this.fotoDataUrl,
     this.cep = '',
     this.logradouro = '',
@@ -30,7 +29,6 @@ class PerfilUsuario {
   String email;
   String dataNascimento;
   String telefone;
-  String senha;
   String? fotoDataUrl;
   String cep;
   String logradouro;
@@ -68,7 +66,31 @@ class PerfilUsuarioApi {
 
   final AppApi _appApi;
 
+  Future<void> limparSenhasLegadas() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final chavesLegadas = prefs
+      .getKeys()
+      .where(
+        (chave) =>
+            chave.startsWith('perfil_') &&
+            chave.endsWith('_senha'),
+      )
+      .toList();
+
+  for (final chave in chavesLegadas) {
+    final removida = await prefs.remove(chave);
+
+    if (!removida) {
+      throw StateError('Falha ao remover senha legada.');
+    }
+  }
+}
+
   Future<PerfilUsuario> carregarPerfil() async {
+    
+    await limparSenhasLegadas();
+
     final user = SupabaseBackend.client.auth.currentUser;
     if (user == null) {
       throw StateError('Usuario nao autenticado.');
@@ -86,7 +108,6 @@ class PerfilUsuarioApi {
         prefs.getString('${chaveBase}telefone') ??
         user.userMetadata?['telefone']?.toString() ??
         '';
-    final senhaLocal = prefs.getString('${chaveBase}senha') ?? '';
 
     final telefoneDb = perfilDb['telefone']?.toString() ?? '';
 
@@ -106,7 +127,6 @@ class PerfilUsuarioApi {
       telefone: _formatarTelefoneVisual(
         telefoneDb.isNotEmpty ? telefoneDb : telefoneLocal,
       ),
-      senha: senhaLocal,
       fotoDataUrl:
           texto('foto_data_url').isNotEmpty
               ? texto('foto_data_url')
@@ -167,7 +187,6 @@ class PerfilUsuarioApi {
     final prefs = await SharedPreferences.getInstance();
     final chaveBase = 'perfil_${user.id}_';
     await prefs.setString('${chaveBase}telefone', perfil.telefone);
-    await prefs.setString('${chaveBase}senha', perfil.senha);
     if (perfil.fotoDataUrl != null && perfil.fotoDataUrl!.isNotEmpty) {
       await prefs.setString('${chaveBase}foto_data_url', perfil.fotoDataUrl!);
     }
@@ -178,10 +197,10 @@ class PerfilUsuarioApi {
       metadata['avatar_data_url'] = perfil.fotoDataUrl!;
     }
 
-    try {
+    try { //linha 181 começo
       await SupabaseBackend.client.auth.updateUser(
         UserAttributes(data: metadata),
-      );
+      ); //linha 184 fim
     } catch (_) {}
 
     return PerfilUsuario(
@@ -192,7 +211,6 @@ class PerfilUsuarioApi {
         salvoDb['data_nascimento']?.toString(),
       ),
       telefone: _formatarTelefoneVisual(perfil.telefone),
-      senha: perfil.senha,
       fotoDataUrl: perfil.fotoDataUrl,
       cep: perfil.cep,
       logradouro: perfil.logradouro,

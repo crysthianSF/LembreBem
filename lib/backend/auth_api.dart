@@ -33,6 +33,35 @@ class AuthApi {
     } catch (_) {}
   }
 
+  Future<void> alterarSenha({
+    required String novaSenha,
+  }) async {
+    if (novaSenha.isEmpty) {
+      throw ArgumentError('A nova senha não pode estar vazia.');
+    }
+
+    final auth = SupabaseBackend.client.auth;
+
+    // Confere se existe uma sessão e um usuário autenticado.
+    if (auth.currentSession == null || auth.currentUser == null) {
+      throw StateError(
+        'Sua sessão expirou. Entre novamente na sua conta.',
+      );
+    }
+
+    final response = await auth
+        .updateUser(
+          UserAttributes(password: novaSenha),
+        )
+        .timeout(_authTimeout);
+
+    if (response.user == null) {
+      throw StateError(
+        'Não foi possível confirmar a alteração da senha.',
+      );
+    }
+  }
+
   Future<void> logout() async {
     await SupabaseBackend.client.auth.signOut();
   }
