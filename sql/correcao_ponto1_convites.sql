@@ -118,3 +118,63 @@ $$;
 
 revoke execute on function app.vincular_paciente(text) from public;
 grant execute on function app.vincular_paciente(text) to authenticated;
+
+create or replace function app.consumir_convite_cuidador(
+    p_token_hash text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = app, public
+as $$
+declare
+    v_cuidador_id uuid;
+    v_convite record;
+begin
+    v_cuidador_id := auth.uid();
+    if v_cuidador_id is null then
+        raise exception 'Operação não autorizada: sessão ausente.';
+    end if;
+
+    if not exists (select 1 from app.cuidadores where id = v_cuidador_id) then
+        raise exception 'Apenas cuidadores cadastrados podem aceitar convites.';
+    end if;
+
+    if not app.verificar_rate_limit_cuidador(v_cuidador_id) then
+        raise exception 'Limite de tentativas excedido. Tente novamente em 15 minutos.';
+    end if;
+
+    select * into v_convite
+    from app.convites_vinculacao
+    where token_hash = p_token_hash
+    for update;
+
+    if v_convite.id is null 
+       or v_convite.cuidador_id <> v_cuidador_id
+       or v_convite.expira_em < now()
+       or v_convite.consumido_em is not null
+       or v_convite.revogado_em is not null then
+
+        insert into app.tentativas_vinculacao (usuario_id, sucesso) 
+        values (v_cuidador_id, false);
+        
+        raise exception 'Convite inválido, expirado ou não autorizado para esta conta.';
+    end if;
+
+    update app.convites_vinculacao
+    set consumido_em = now()
+    where id = v_convite.id;
+
+    insert into app.cuidador_pacientes (cuidador_id, paciente_id)
+    values (v_cuidador_id, v_convite.paciente_id)
+    on conflict (cuidador_id, paciente_id) do update set vinculado_em = now();
+
+    insert into app.tentativas_vinculacao (usuario_id, sucesso) 
+    values (v_cuidador_id, true);
+
+    return true;
+end;
+$$;
+
+revoke execute on function app.consumir_convite_cuidador(text) from public;
+grant execute on function app.consumir_convite_cuidador(text) to authenticated;

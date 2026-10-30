@@ -182,7 +182,6 @@ class CuidadorApi {
     });
   }
 
-  /// SEC-01:
   Future<String> emitirConviteCuidador({required String cuidadorId}) async {
     final user = _app.auth.currentUser;
     if (user == null) {
@@ -202,6 +201,20 @@ class CuidadorApi {
     }).timeout(_timeout);
 
     return tokenOriginal;
+  }
+
+  Future<void> aceitarConvitePaciente({required String tokenRecebido}) async {
+    final user = _app.auth.currentUser;
+    if (user == null) {
+      throw StateError('Cuidador precisa estar autenticado.');
+    }
+
+    // Calcula o hash SHA-256 do token recebido para enviar ao banco
+    final tokenHash = sha256.convert(utf8.encode(tokenRecebido.trim())).toString();
+
+    await _app.rpc('consumir_convite_cuidador', params: {
+      'p_token_hash': tokenHash,
+    }).timeout(_timeout);
   }
 
 }
