@@ -183,7 +183,7 @@ class CuidadorApi {
   }
 
   Future<String> emitirConviteCuidador({required String cuidadorId}) async {
-    final user = _app.auth.currentUser;
+    final user = SupabaseBackend.client.auth.currentUser;
     if (user == null) {
       throw StateError('Usuário precisa estar autenticado como paciente.');
     }
@@ -204,7 +204,7 @@ class CuidadorApi {
   }
 
   Future<void> aceitarConvitePaciente({required String tokenRecebido}) async {
-    final user = _app.auth.currentUser;
+    final user = SupabaseBackend.client.auth.currentUser;
     if (user == null) {
       throw StateError('Cuidador precisa estar autenticado.');
     }
