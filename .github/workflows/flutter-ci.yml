@@ -1,0 +1,64 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.47.4'
+
+jobs:
+  analysis:
+    name: Flutter / analise
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Instalar dependencias do lockfile
+        run: flutter pub get --enforce-lockfile
+      - name: Analisar codigo e testes
+        run: flutter analyze --no-pub --fatal-infos
+
+  tests:
+    name: Flutter / testes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Instalar dependencias do lockfile
+        run: flutter pub get --enforce-lockfile
+      - name: Executar testes
+        run: flutter test --no-pub --coverage --reporter expanded test
+      - name: Salvar cobertura
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: cobertura-flutter
+          path: coverage/lcov.info
+          if-no-files-found: warn
+          retention-days: 14
