@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lembrebem/backend/auth_api.dart';
 import 'package:lembrebem/telas/fundo_decorado.dart';
+import 'package:lembrebem/telas/tela_login.dart';
 import 'package:lembrebem/widgets/componentes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -14,7 +15,12 @@ enum EtapaRecuperacao {
 }
 
 class TelaRedefinirSenha extends StatefulWidget {
-  const TelaRedefinirSenha({super.key});
+  const TelaRedefinirSenha({
+    super.key,
+    this.etapaInicial = EtapaRecuperacao.solicitarEmail,
+  });
+
+  final EtapaRecuperacao etapaInicial;
 
   @override
   State<TelaRedefinirSenha> createState() => _TelaRedefinirSenhaState();
@@ -23,7 +29,7 @@ class TelaRedefinirSenha extends StatefulWidget {
 class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
   final AuthApi _authApi = AuthApi();
 
-  EtapaRecuperacao _etapaAtual = EtapaRecuperacao.solicitarEmail;
+  late EtapaRecuperacao _etapaAtual;
 
   final _formKeyEmail = GlobalKey<FormState>();
   final _formKeyCodigo = GlobalKey<FormState>();
@@ -41,6 +47,12 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
   Timer? _timerCooldown;
   int _segundosRestantes = 0;
   int _proximoCooldown = 60;
+
+  @override
+  void initState() {
+    super.initState();
+    _etapaAtual = widget.etapaInicial;
+  }
 
   @override
   void dispose() {
@@ -234,7 +246,11 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context); // fecha o diálogo
-                Navigator.pop(context); // volta para a tela de login
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TelaLogin()),
+                  (route) => false,
+                );
               },
               child: const Text(
                 'Ir para o Login',
@@ -322,8 +338,14 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
                                 _etapaAtual = EtapaRecuperacao.solicitarEmail;
                                 _mensagemErro = null;
                               });
-                            } else {
+                            } else if (Navigator.canPop(context)) {
                               Navigator.pop(context);
+                            } else {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (_) => const TelaLogin()),
+                                (route) => false,
+                              );
                             }
                           },
                         ),

@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lembrebem/backend/supabase_backend.dart';
 import 'package:lembrebem/telas/fundo_decorado.dart';
 import 'package:lembrebem/telas/tela_inicial.dart';
+import 'package:lembrebem/telas/tela_redefinir_senha.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,21 +20,53 @@ void main() async {
   runApp(MyApp(startupError: startupError));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key, this.startupError});
 
   final String? startupError;
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  late final StreamSubscription<AuthState> _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSubscription = SupabaseBackend.client.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        _navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => const TelaRedefinirSenha(
+              etapaInicial: EtapaRecuperacao.novaSenha,
+            ),
+          ),
+          (route) => false,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'LembreBem',
       debugShowCheckedModeBanner: false,
       theme: _temaLembreBem(),
       home:
-          startupError == null
+          widget.startupError == null
               ? const TelaInicial()
-              : _TelaErroInicializacao(erro: startupError!),
+              : _TelaErroInicializacao(erro: widget.startupError!),
     );
   }
 
