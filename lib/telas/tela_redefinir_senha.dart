@@ -6,7 +6,6 @@ import 'package:lembrebem/backend/auth_api.dart';
 import 'package:lembrebem/telas/fundo_decorado.dart';
 import 'package:lembrebem/telas/tela_login.dart';
 import 'package:lembrebem/widgets/componentes.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum EtapaRecuperacao {
   solicitarEmail,
