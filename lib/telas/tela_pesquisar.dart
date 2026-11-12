@@ -14,6 +14,9 @@ import 'package:lembrebem/widgets/medicamento_detalhes.dart';
 import 'package:lembrebem/widgets/skeleton_box.dart';
 import 'package:lembrebem/widgets/componentes.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class TelaPesquisar extends StatefulWidget {
   const TelaPesquisar({super.key});
@@ -36,6 +39,7 @@ class _TelaPesquisarState extends State<TelaPesquisar> {
   List<Map<String, dynamic>> _resultados = [];
   Set<int> _idsFavoritos = {};
   bool _favoritosDisponiveis = true;
+  Position? _posicaoAtual;
 
   String? get _usuarioId => SupabaseBackend.client.auth.currentUser?.id;
 
@@ -43,6 +47,7 @@ class _TelaPesquisarState extends State<TelaPesquisar> {
   void initState() {
     super.initState();
     _carregarFavoritos();
+    _obterLocalizacao();
   }
 
   @override
@@ -90,6 +95,24 @@ class _TelaPesquisarState extends State<TelaPesquisar> {
     _debounceBusca = Timer(const Duration(milliseconds: 260), () {
       _buscar(termo);
     });
+  }
+
+  Future<void> _obterLocalizacao() async {
+    try {
+      print('Iniciando localização...');
+
+      final posicao = await Geolocator.getCurrentPosition();
+
+      print('Latitude: ${posicao.latitude} | Longitude: ${posicao.longitude}');
+
+      if (mounted) {
+        setState(() {
+          _posicaoAtual = posicao;
+        });
+      }
+    } catch (e) {
+      print('ERRO LOCALIZACAO: $e');
+    }
   }
 
   Future<void> _buscar(String termo) async {
@@ -260,11 +283,34 @@ class _TelaPesquisarState extends State<TelaPesquisar> {
   }
 
   Future<void> _abrirGoogleMapsFarmacias() async {
-    final uri = Uri.parse(
-      'https://www.google.com/maps/search/farmacias+em+Cascavel',
-    );
     try {
+      bool servicoLigado = await Geolocator.isLocationServiceEnabled();
+
+      if (!servicoLigado) {
+        throw Exception('Localização desligada');
+      }
+
+      LocationPermission permissao = await Geolocator.checkPermission();
+
+      if (permissao == LocationPermission.denied) {
+        permissao = await Geolocator.requestPermission();
+      }
+
+      if (permissao == LocationPermission.denied ||
+          permissao == LocationPermission.deniedForever) {
+        throw Exception('Permissão negada');
+      }
+
+      final posicao = await Geolocator.getCurrentPosition();
+
+      final uri = Uri.parse(
+        'https://www.google.com/maps/search/pharmacy/@'
+        '${posicao.latitude},'
+        '${posicao.longitude},15z',
+      );
+
       final abriu = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
       if (!abriu && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Não foi possível abrir o mapa.')),
@@ -273,7 +319,9 @@ class _TelaPesquisarState extends State<TelaPesquisar> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível abrir o mapa.')),
+          const SnackBar(
+            content: Text('Não foi possível obter sua localização.'),
+          ),
         );
       }
     }
@@ -303,37 +351,75 @@ class _TelaPesquisarState extends State<TelaPesquisar> {
                 ),
               ),
               const SizedBox(height: 16),
+
               const Text(
-                'Farmácias em Cascavel',
+                'Farmácias Próximas',
                 style: TextStyle(
                   color: corPrimariaEscura,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
+
               const SizedBox(height: 4),
+
               const Text(
-                'Redes de atendimento e plantões da região',
+                'Farmácias encontradas próximas à sua localização',
                 style: TextStyle(color: corTextoCinza, fontSize: 13),
               ),
+
               const SizedBox(height: 16),
+
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.asset(
-                  'assets/images/mapa_farmacias.png',
+                child: SizedBox(
                   height: 220,
                   width: double.infinity,
-                  fit: BoxFit.cover,
+                  child:
+                      _posicaoAtual == null
+                          ? const Center(child: CircularProgressIndicator())
+                          : FlutterMap(
+                            options: MapOptions(
+                              initialCenter: LatLng(
+                                _posicaoAtual!.latitude,
+                                _posicaoAtual!.longitude,
+                              ),
+                              initialZoom: 14,
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate:
+                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: LatLng(
+                                      _posicaoAtual!.latitude,
+                                      _posicaoAtual!.longitude,
+                                    ),
+                                    child: const Icon(
+                                      Icons.location_on,
+                                      color: Colors.red,
+                                      size: 40,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                 ),
               ),
+
               const SizedBox(height: 10),
+
               const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.location_on, color: corEmergencia, size: 18),
                   SizedBox(width: 6),
                   Text(
-                    'Centro, Cascavel - PR',
+                    'Usando sua localização atual',
                     style: TextStyle(
                       color: Color(0xFF5A5A5A),
                       fontSize: 13,
@@ -342,7 +428,9 @@ class _TelaPesquisarState extends State<TelaPesquisar> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 16),
+
               BotaoPrimario(
                 texto: 'Abrir no Google Maps',
                 cor: corPrimariaEscura,
@@ -483,24 +571,44 @@ class _TelaPesquisarState extends State<TelaPesquisar> {
     return CartaoBranco(
       child: Column(
         children: [
-          Container(
-            height: 150,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFFCCE8EA),
-              borderRadius: BorderRadius.circular(14),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/mapa_farmacias.png'),
-                fit: BoxFit.cover,
-                opacity: 0.55,
-              ),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.location_on,
-                size: 44,
-                color: corPrimariaEscura,
-              ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              height: 150,
+              width: double.infinity,
+              child:
+                  _posicaoAtual == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : FlutterMap(
+                        options: MapOptions(
+                          initialCenter: LatLng(
+                            _posicaoAtual!.latitude,
+                            _posicaoAtual!.longitude,
+                          ),
+                          initialZoom: 13,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          ),
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: LatLng(
+                                  _posicaoAtual!.latitude,
+                                  _posicaoAtual!.longitude,
+                                ),
+                                child: const Icon(
+                                  Icons.location_on,
+                                  color: corEmergencia,
+                                  size: 35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
             ),
           ),
           const SizedBox(height: 14),
@@ -515,7 +623,7 @@ class _TelaPesquisarState extends State<TelaPesquisar> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Visualize redes de atendimento ao seu redor em Cascavel',
+            'Visualize farmácias próximas da sua localização',
             textAlign: TextAlign.center,
             style: TextStyle(color: corTextoCinza, fontSize: 12),
           ),

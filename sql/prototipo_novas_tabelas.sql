@@ -114,13 +114,23 @@ begin
     raise exception 'Apenas cuidadores podem vincular pacientes.';
   end if;
 
-  select id into v_paciente_id
-    from app.usuarios
-   where codigo_vinculacao = codigo
-   limit 1;
+  select id
+    into v_paciente_id
+  from app.usuarios
+  where codigo_vinculacao = codigo
+  limit 1;
 
   if v_paciente_id is null then
     raise exception 'Codigo de vinculacao invalido.';
+  end if;
+
+  if exists (
+    select 1
+    from app.acessos_revogados ar
+    where ar.paciente_id = v_paciente_id
+      and ar.cuidador_id = auth.uid()
+  ) then
+    raise exception 'Acesso revogado pelo paciente.';
   end if;
 
   insert into app.cuidador_pacientes (cuidador_id, paciente_id)
@@ -157,6 +167,29 @@ create policy alarmes_leitura_cuidador on app.alarmes
     )
   );
 
+-- Convites e Vinculação com cuidadores
+
+create table if not exists app.convites_vinculacao (
+  id uuid primary key default gen_random_uuid(),
+  paciente_id uuid not null references app.usuarios(id) on delete cascade,
+  cuidador_id uuid not null references app.cuidadores(id) on delete cascade,
+  token text not null unique,
+  criado_em timestamptz not null default now(),
+  expires_at timestamptz not null,
+  consumed_at timestamptz,
+  revoked_at timestamptz
+);
+
+alter table app.convites_vinculacao enable row level security;
+
+grant select, insert, update on app.convites_vinculacao to authenticated;
+
+create table if not exists app.acessos_revogados (
+  id uuid primary key default gen_random_uuid(),
+  paciente_id uuid not null,
+  cuidador_id uuid not null,
+  revogado_em timestamptz default now()
+);
 -- ----------------------------------------------------------------------------
 -- 4) FAVORITOS (coracao na busca / aba "Em Uso")
 -- ----------------------------------------------------------------------------
