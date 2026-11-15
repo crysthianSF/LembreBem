@@ -666,10 +666,9 @@ class _TelaMedicamentosState extends State<TelaMedicamentos> {
         if (_emUso.isEmpty) {
           return [
             _placeholder(
-              Icons.medication_outlined,
-              'Nenhum medicamento ativo.',
-              'Favorite remédios no catálogo da busca para '
-                  'acompanhá-los por aqui.',
+              Icons.favorite_border_rounded,
+              'Nenhum medicamento favoritado',
+              'Favorite remédios no catálogo de pesquisa para acompanhá-los por aqui.',
             ),
           ];
         }
@@ -745,32 +744,48 @@ class _TelaMedicamentosState extends State<TelaMedicamentos> {
   }
 
   Widget _placeholder(IconData icone, String titulo, String texto) {
-    return CartaoBranco(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        children: [
-          Icon(icone, size: 40, color: corTextoCinzaClaro),
-          const SizedBox(height: 12),
-          Text(
-            titulo,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: corTextoEscuro,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD6F0F1),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFBCEAEB), width: 2),
+              ),
+              child: Icon(
+                icone,
+                size: 42,
+                color: corPrimariaEscura,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            texto,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              color: corTextoCinza,
+            const SizedBox(height: 20),
+            Text(
+              titulo,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: corPrimariaEscura,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              texto,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: corTextoCinza,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

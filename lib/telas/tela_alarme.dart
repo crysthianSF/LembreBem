@@ -340,12 +340,7 @@ class _TelaAlarmeState extends State<TelaAlarme> {
                       : _erro != null
                       ? _erroComRetry()
                       : alarmeList.isEmpty
-                      ? const Center(
-                        child: Text(
-                          'Voce ainda nao possui alarmes.',
-                          style: TextStyle(color: Color(0xFF646464)),
-                        ),
-                      )
+                      ? _emptyStateAlarmes()
                       : ListView.builder(
                         padding: EdgeInsets.symmetric(horizontal: 24),
                         itemCount: alarmeList.length,
@@ -355,6 +350,53 @@ class _TelaAlarmeState extends State<TelaAlarme> {
                       ),
             ),
             const BarraNavegacaoApp(ativa: AbaApp.alarme),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyStateAlarmes() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD6F0F1),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFBCEAEB), width: 2),
+              ),
+              child: const Icon(
+                Icons.alarm_add_outlined,
+                size: 42,
+                color: corPrimariaEscura,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Nenhum alarme cadastrado',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: corPrimariaEscura,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Cadastre seus lembretes para acompanhar o horário certo dos seus medicamentos.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: corTextoCinza,
+              ),
+            ),
           ],
         ),
       ),
