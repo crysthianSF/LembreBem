@@ -322,7 +322,7 @@ class _TelaPerfilState extends State<TelaPerfil> {
     );
   }
 
-  ImageProvider _avatarProvider() {
+  ImageProvider? _avatarProvider() {
     final foto = _fotoDataUrl;
     if (foto != null && foto.startsWith('data:')) {
       try {
@@ -333,7 +333,7 @@ class _TelaPerfilState extends State<TelaPerfil> {
     if (foto != null && foto.startsWith('http')) {
       return NetworkImage(foto);
     }
-    return const AssetImage('assets/images/avatar_perfil.png');
+    return null;
   }
 
   @override
@@ -660,16 +660,32 @@ class _TelaPerfilState extends State<TelaPerfil> {
                     width: 112,
                     height: 112,
                     decoration: BoxDecoration(
+                      color: const Color(0xFFD6F0F1),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 4),
                       boxShadow: const [
-                        BoxShadow(color: Color(0x33000000), blurRadius: 14),
+                        BoxShadow(
+                          color: Color(0x24000000),
+                          blurRadius: 14,
+                          offset: Offset(0, 4),
+                        ),
                       ],
-                      image: DecorationImage(
-                        image: _avatarProvider(),
-                        fit: BoxFit.cover,
-                      ),
+                      image: _avatarProvider() != null
+                          ? DecorationImage(
+                              image: _avatarProvider()!,
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
+                    child: _avatarProvider() == null
+                        ? const Center(
+                            child: Icon(
+                              Icons.person_rounded,
+                              size: 64,
+                              color: corPrimariaEscura,
+                            ),
+                          )
+                        : null,
                   ),
                   Positioned(
                     bottom: 0,
