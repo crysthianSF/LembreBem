@@ -36,4 +36,46 @@ class AuthApi {
   Future<void> logout() async {
     await SupabaseBackend.client.auth.signOut();
   }
+
+  /// Dispara o envio do codigo OTP de recuperacao para o e-mail informado.
+  /// Para mitigar Account Enumeration, nao revela se o e-mail existe no banco.
+  Future<void> solicitarCodigoRecuperacao(String email) async {
+    final emailFormatado = email.trim().toLowerCase();
+    try {
+      await SupabaseBackend.client.auth
+          .resetPasswordForEmail(emailFormatado)
+          .timeout(_authTimeout);
+    } on AuthException catch (e) {
+      final msg = e.message.toLowerCase();
+      // Silencia "user not found" para prevenir enumeracao de contas
+      if (msg.contains('user not found') || msg.contains('not found')) {
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  /// Valida o codigo OTP de 6 digitos recebido por e-mail.
+  /// Se valido, o Supabase autentica uma sessao temporaria de recuperacao.
+  Future<AuthResponse> verificarCodigoRecuperacao({
+    required String email,
+    required String codigo,
+  }) async {
+    return await SupabaseBackend.client.auth
+        .verifyOTP(
+          email: email.trim().toLowerCase(),
+          token: codigo.trim(),
+          type: OtpType.recovery,
+        )
+        .timeout(_authTimeout);
+  }
+
+  /// Atualiza a senha do usuario na sessao de recuperacao
+  /// e encerra a sessao temporaria para exigir novo login manual.
+  Future<void> atualizarSenha(String novaSenha) async {
+    await SupabaseBackend.client.auth
+        .updateUser(UserAttributes(password: novaSenha))
+        .timeout(_authTimeout);
+    await logout();
+  }
 }

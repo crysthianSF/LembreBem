@@ -10,6 +10,7 @@ import 'package:lembrebem/widgets/componentes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'tela_menu.dart';
+import 'tela_redefinir_senha.dart';
 
 class TelaLogin extends StatefulWidget {
   const TelaLogin({super.key});
@@ -149,11 +150,10 @@ class _TelaLoginState extends State<TelaLogin> {
   }
 
   void _esqueciSenha() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Entre em contato com o suporte para redefinir sua senha.',
-        ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const TelaRedefinirSenha(),
       ),
     );
   }

@@ -198,7 +198,7 @@ class _TelaCadastro1State extends State<TelaCadastro1> {
                   const SizedBox(height: 14),
                   CampoComIcone(
                     controller: emailController,
-                    rotulo: 'Email',
+                    rotulo: 'E-mail *',
                     dica: 'seu@email.com',
                     icone: Icons.mail_outline,
                     teclado: TextInputType.emailAddress,
