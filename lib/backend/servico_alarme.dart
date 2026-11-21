@@ -40,6 +40,9 @@ class ServicoAlarme {
   /// Armazena alarmes em modo soneca com o horário exato em que devem tocar novamente
   final Map<String, DateTime> _sonecasAtivas = {};
 
+  /// Armazena o objeto Alarme associado a cada soneca para manter os dados na 2ª chamada
+  final Map<String, Alarme> _alarmesSoneca = {};
+
   GlobalKey<NavigatorState>? get navigatorKey => _navigatorKey;
   List<Alarme> get alarmesAtivos => List.unmodifiable(_alarmesAtivos);
   bool get inicializado => _inicializado;
@@ -113,18 +116,19 @@ class ServicoAlarme {
 
     for (final alarmeId in sonecasParaTocar) {
       _sonecasAtivas.remove(alarmeId);
-      final alarme = _alarmesAtivos.firstWhere(
-        (a) => a.id == alarmeId,
-        orElse: () => Alarme(
-          id: alarmeId,
-          nome: 'Medicamento',
-          observacoes: '',
-          horario: TimeOfDay(hour: agora.hour, minute: agora.minute),
-          diasDeUso: '',
-          ativado: true,
-          intervalo: '',
-        ),
-      );
+      final alarme = _alarmesSoneca.remove(alarmeId) ??
+          _alarmesAtivos.firstWhere(
+            (a) => a.id == alarmeId,
+            orElse: () => Alarme(
+              id: alarmeId,
+              nome: 'Medicamento',
+              observacoes: '',
+              horario: TimeOfDay(hour: agora.hour, minute: agora.minute),
+              diasDeUso: '',
+              ativado: true,
+              intervalo: '',
+            ),
+          );
 
       await dispararAlarme(alarme, tentativa: 2, dataReferencia: agora);
       return; // Dispara um por vez para não sobrepor telas
@@ -192,59 +196,69 @@ class ServicoAlarme {
     final horaFormatada =
         '${alarme.horario.hour.toString().padLeft(2, '0')}:${alarme.horario.minute.toString().padLeft(2, '0')}';
 
-    final resultado = await Navigator.of(context).push(
-      MaterialPageRoute<String>(
-        fullscreenDialog: true,
-        builder: (_) => TelaAlarmeDisparado(
-          alarmeId: alarmeId,
-          medicamentoNome: alarme.nome,
-          horarioFormatado: horaFormatada,
-          observacoes: alarme.observacoes,
-          tentativa: tentativa,
-          horarioPrevisto: agora,
-          aoTomarMedicamento: () async {
-            await _alarmesApi.registrarDoseTomada(
-              alarmeId: alarmeId,
-              medicamentoNome: alarme.nome,
-              horarioPrevisto: agora,
-            );
-          },
-          aoPedirSoneca: () {
-            agendarSoneca(alarmeId, minutos: 10);
-          },
-          aoEscalarCuidador: () async {
-            await _alarmesApi.registrarDosePerdidaEEscalar(
-              alarmeId: alarmeId,
-              medicamentoNome: alarme.nome,
-              horarioPrevisto: agora,
-            );
-          },
+    try {
+      final resultado = await Navigator.of(context).push(
+        MaterialPageRoute<String>(
+          fullscreenDialog: true,
+          builder: (_) => TelaAlarmeDisparado(
+            alarmeId: alarmeId,
+            medicamentoNome: alarme.nome,
+            horarioFormatado: horaFormatada,
+            observacoes: alarme.observacoes,
+            tentativa: tentativa,
+            horarioPrevisto: agora,
+            aoTomarMedicamento: () async {
+              await _alarmesApi.registrarDoseTomada(
+                alarmeId: alarmeId,
+                medicamentoNome: alarme.nome,
+                horarioPrevisto: agora,
+              );
+            },
+            aoPedirSoneca: (minutos) {
+              agendarSoneca(alarmeId, alarme: alarme, minutos: minutos);
+            },
+            aoEscalarCuidador: () async {
+              await _alarmesApi.registrarDosePerdidaEEscalar(
+                alarmeId: alarmeId,
+                medicamentoNome: alarme.nome,
+                horarioPrevisto: agora,
+              );
+            },
+          ),
         ),
-      ),
-    );
+      );
 
-    _alarmeEmExibicao = false;
-
-    if (resultado == 'tomada') {
-      _sonecasAtivas.remove(alarmeId);
-      _tentativasPorAlarme.remove(alarmeId);
-    } else if (resultado == 'soneca') {
-      agendarSoneca(alarmeId, minutos: 10);
-    } else if (resultado == 'perdida') {
-      _sonecasAtivas.remove(alarmeId);
-      _tentativasPorAlarme.remove(alarmeId);
+      if (resultado == 'tomada') {
+        _sonecasAtivas.remove(alarmeId);
+        _alarmesSoneca.remove(alarmeId);
+        _tentativasPorAlarme.remove(alarmeId);
+      } else if (resultado != null && resultado.startsWith('soneca')) {
+        final partes = resultado.split('_');
+        final minutos = partes.length > 1 ? (int.tryParse(partes[1]) ?? 10) : 10;
+        agendarSoneca(alarmeId, alarme: alarme, minutos: minutos);
+      } else if (resultado == 'perdida') {
+        _sonecasAtivas.remove(alarmeId);
+        _alarmesSoneca.remove(alarmeId);
+        _tentativasPorAlarme.remove(alarmeId);
+      }
+    } finally {
+      _alarmeEmExibicao = false;
     }
   }
 
   /// Agenda modo soneca para disparar novamente após `minutos`.
-  void agendarSoneca(String alarmeId, {int minutos = 10}) {
+  void agendarSoneca(String alarmeId, {Alarme? alarme, int minutos = 10}) {
     _sonecasAtivas[alarmeId] = DateTime.now().add(Duration(minutes: minutos));
     _tentativasPorAlarme[alarmeId] = 2;
+    if (alarme != null) {
+      _alarmesSoneca[alarmeId] = alarme;
+    }
   }
 
   /// Cancela qualquer soneca pendente para o alarme.
   void cancelarSoneca(String alarmeId) {
     _sonecasAtivas.remove(alarmeId);
+    _alarmesSoneca.remove(alarmeId);
     _tentativasPorAlarme.remove(alarmeId);
   }
 
@@ -255,6 +269,10 @@ class ServicoAlarme {
     _inicializado = false;
     _alarmeEmExibicao = false;
     _sonecasAtivas.clear();
+    _alarmesSoneca.clear();
+    _tentativasPorAlarme.clear();
+    _disparosRecentes.clear();
+  }
     _tentativasPorAlarme.clear();
     _disparosRecentes.clear();
   }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lembrebem/backend/alarmes_api.dart';
 import 'package:lembrebem/telas/fundo_decorado.dart';
+import 'package:lembrebem/utils/som_alarme.dart';
 import 'package:lembrebem/widgets/componentes.dart';
 
 class TelaAlarmeDisparado extends StatefulWidget {
@@ -29,7 +30,7 @@ class TelaAlarmeDisparado extends StatefulWidget {
   final int tentativa;
   final DateTime? horarioPrevisto;
   final Future<void> Function()? aoTomarMedicamento;
-  final void Function()? aoPedirSoneca;
+  final void Function(int minutos)? aoPedirSoneca;
   final Future<void> Function()? aoEscalarCuidador;
 
   @override
@@ -42,9 +43,10 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   Timer? _countdownTimer;
-  Timer? _vibrationTimer;
+  Timer? _efeitoSonoroTimer;
   int _segundosRestantes = 60;
   bool _processando = false;
+  bool _permitirFechar = false;
 
   @override
   void initState() {
@@ -59,18 +61,26 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    _iniciarVibracao();
+    _iniciarEfeitosSonorosEVibracao();
     _iniciarContagemRegressiva();
   }
 
-  void _iniciarVibracao() {
+  void _iniciarEfeitosSonorosEVibracao() {
+    // Toca imediatamente ao abrir a tela
+    GerenciadorSomAlarme.tocarBeepAlarme();
     HapticFeedback.heavyImpact();
-    _vibrationTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+
+    // Repete o bipe sonoro e vibração a cada 1.5s enquanto o alarme estiver tocando
+    _efeitoSonoroTimer?.cancel();
+    _efeitoSonoroTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+      if (!mounted) return;
+      GerenciadorSomAlarme.tocarBeepAlarme();
       HapticFeedback.heavyImpact();
     });
   }
 
   void _iniciarContagemRegressiva() {
+    _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
@@ -89,9 +99,19 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
   }
 
   void _pararEfeitos() {
-    _vibrationTimer?.cancel();
+    _efeitoSonoroTimer?.cancel();
+    _efeitoSonoroTimer = null;
     _countdownTimer?.cancel();
+    _countdownTimer = null;
     _pulseController.stop();
+  }
+
+  void _fecharComResultado(String resultado) {
+    _permitirFechar = true;
+    _pararEfeitos();
+    if (mounted) {
+      Navigator.of(context).pop(resultado);
+    }
   }
 
   Future<void> _tratarTimeout() async {
@@ -99,11 +119,9 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
     if (widget.tentativa == 1) {
       // 1ª chamada sem resposta -> ativa soneca automática de 10 min
       if (widget.aoPedirSoneca != null) {
-        widget.aoPedirSoneca!();
+        widget.aoPedirSoneca!(10);
       }
-      if (mounted) {
-        Navigator.of(context).maybePop('soneca');
-      }
+      _fecharComResultado('soneca_10');
     } else {
       // 2ª chamada sem resposta -> dose perdida e aciona cuidador
       await _escalarDosePerdida();
@@ -114,6 +132,8 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
     if (_processando) return;
     setState(() => _processando = true);
     _pararEfeitos();
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
 
     try {
       if (widget.aoTomarMedicamento != null) {
@@ -128,17 +148,16 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
         );
       }
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger?.showSnackBar(
         const SnackBar(
           content: Text('Medicamento registrado como tomado com sucesso!'),
           backgroundColor: Color(0xFF1B8F45),
         ),
       );
-      Navigator.of(context).maybePop('tomada');
+      _fecharComResultado('tomada');
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger?.showSnackBar(
           const SnackBar(
             content: Text('Erro ao registrar dose. Verifique sua conexao.'),
             backgroundColor: Color(0xFFC0392B),
@@ -149,29 +168,32 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
     }
   }
 
-  void _ativarSoneca() {
+  void _ativarSoneca({int minutos = 10}) {
     if (_processando) return;
     _pararEfeitos();
 
+    final messenger = ScaffoldMessenger.maybeOf(context);
+
     if (widget.aoPedirSoneca != null) {
-      widget.aoPedirSoneca!();
+      widget.aoPedirSoneca!(minutos);
     }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Soneca ativada. O alarme tocará novamente em 10 minutos.'),
-          backgroundColor: Color(0xFF0284C7),
-        ),
-      );
-      Navigator.of(context).maybePop('soneca');
-    }
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text('Soneca ativada. O alarme tocará novamente em $minutos minuto${minutos > 1 ? 's' : ''}.'),
+        backgroundColor: const Color(0xFF0284C7),
+      ),
+    );
+
+    _fecharComResultado('soneca_$minutos');
   }
 
   Future<void> _escalarDosePerdida() async {
     if (_processando) return;
     setState(() => _processando = true);
     _pararEfeitos();
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
 
     try {
       if (widget.aoEscalarCuidador != null) {
@@ -186,18 +208,15 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
         );
       }
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger?.showSnackBar(
         const SnackBar(
           content: Text('Dose registrada como perdida. Notificação enviada ao cuidador.'),
           backgroundColor: Color(0xFFD97706),
         ),
       );
-      Navigator.of(context).maybePop('perdida');
+      _fecharComResultado('perdida');
     } catch (_) {
-      if (mounted) {
-        Navigator.of(context).maybePop('perdida');
-      }
+      _fecharComResultado('perdida');
     }
   }
 
@@ -213,7 +232,7 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
     final bool eSegundaTentativa = widget.tentativa >= 2;
 
     return WillPopScope(
-      onWillPop: () async => false, // Evita fechar acidentalmente pelo botão voltar
+      onWillPop: () async => _permitirFechar,
       child: Scaffold(
         backgroundColor: corFundo,
         body: FundoDecorado(
@@ -416,7 +435,7 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                   const SizedBox(height: 12),
 
                   // Botão secundário: Soneca na 1ª tentativa ou Desligar na 2ª tentativa
-                  if (!eSegundaTentativa)
+                  if (!eSegundaTentativa) ...[
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
@@ -436,10 +455,24 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        onPressed: _processando ? null : _ativarSoneca,
+                        onPressed: _processando ? null : () => _ativarSoneca(minutos: 10),
                       ),
-                    )
-                  else
+                    ),
+                    const SizedBox(height: 8),
+                    // Atalho para teste rápido de 1 minuto (facilita muito testar a 2ª chamada sem esperar 10 min)
+                    TextButton.icon(
+                      icon: const Icon(Icons.flash_on, size: 16, color: Color(0xFF0284C7)),
+                      label: const Text(
+                        'Testar 2ª chamada em 1 minuto',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0284C7),
+                        ),
+                      ),
+                      onPressed: _processando ? null : () => _ativarSoneca(minutos: 1),
+                    ),
+                  ] else
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
@@ -471,7 +504,7 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                       ),
                     ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),

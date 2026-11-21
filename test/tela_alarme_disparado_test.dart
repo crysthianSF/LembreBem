@@ -25,7 +25,7 @@ void main() {
           aoTomarMedicamento: () async {
             tomou = true;
           },
-          aoPedirSoneca: () {
+          aoPedirSoneca: (minutos) {
             soneca = true;
           },
         ),
@@ -39,11 +39,12 @@ void main() {
     expect(find.text('Tomar com água'), findsOneWidget);
     expect(find.text('✓ Tomei o medicamento'), findsOneWidget);
     expect(find.text('Lembrar em 10 minutos (Soneca)'), findsOneWidget);
+    expect(find.text('Testar 2ª chamada em 1 minuto'), findsOneWidget);
 
-    // Clica em Tomei o medicamento
-    await tester.tap(find.text('✓ Tomei o medicamento'));
+    // Clica em Soneca
+    await tester.tap(find.text('Lembrar em 10 minutos (Soneca)'));
     await tester.pump();
-    expect(tomou, isTrue);
+    expect(soneca, isTrue);
   });
 
   testWidgets('TelaAlarmeDisparado renderiza segunda chamada com aviso de cuidador', (tester) async {
