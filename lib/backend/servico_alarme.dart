@@ -273,9 +273,6 @@ class ServicoAlarme {
     _tentativasPorAlarme.clear();
     _disparosRecentes.clear();
   }
-    _tentativasPorAlarme.clear();
-    _disparosRecentes.clear();
-  }
 
   /// Verifica se a regra de dias de uso do alarme é aplicável ao dia atual.
   bool _alarmeDeveTocarHoje(String diasDeUso, DateTime data) {
