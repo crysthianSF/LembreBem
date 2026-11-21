@@ -426,7 +426,7 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
 
                   // Botão principal: Tomei o medicamento
                   BotaoPrimario(
-                    texto: '✓ Tomei o medicamento',
+                    texto: 'Tomei o medicamento',
                     cor: const Color(0xFF16A34A),
                     carregando: _processando,
                     onPressed: _confirmarDoseTomada,
@@ -441,7 +441,7 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                       child: OutlinedButton.icon(
                         icon: const Icon(Icons.snooze, size: 20),
                         label: const Text(
-                          'Lembrar em 10 minutos (Soneca)',
+                          'Lembrar em 10 minutos',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -482,7 +482,7 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                           color: Color(0xFFDC2626),
                         ),
                         label: const Text(
-                          'Não vou tomar / Desligar alarme',
+                          'Desligar alarme',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -540,7 +540,7 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
           ),
           const SizedBox(width: 6),
           Text(
-            eSegundaTentativa ? '2ª Chamada (Insistência)' : '1ª Chamada',
+            eSegundaTentativa ? '2ª Chamada' : '1ª Chamada',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,

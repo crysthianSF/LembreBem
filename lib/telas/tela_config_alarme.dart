@@ -38,6 +38,7 @@ class _TelaConfigAlarmeState extends State<TelaConfigAlarme> {
   String _termoSugestao = '';
   bool _buscandoSugestoes = false;
   String? _erroSugestao;
+  String? _erroMedicamento;
 
   Future<void> _selectTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
@@ -192,6 +193,11 @@ class _TelaConfigAlarmeState extends State<TelaConfigAlarme> {
   }
 
   void _onChangeMedicamento(String value) {
+    if (_erroMedicamento != null) {
+      setState(() {
+        _erroMedicamento = null;
+      });
+    }
     _debounceBusca?.cancel();
     _medicamentoIdSelecionado = null;
     _usuarioMedicamentoIdSelecionado = null;
@@ -212,6 +218,7 @@ class _TelaConfigAlarmeState extends State<TelaConfigAlarme> {
             : int.tryParse(id?.toString() ?? '');
 
     setState(() {
+      _erroMedicamento = null;
       _medicamentoController.text = sugestao['nome_produto']?.toString() ?? '';
       _medicamentoIdSelecionado = medicamentoId;
       _sugestoesMedicamentos.clear();
@@ -312,12 +319,27 @@ class _TelaConfigAlarmeState extends State<TelaConfigAlarme> {
   }
 
   void _salvarAlarme() {
+    final nome = _medicamentoController.text.trim();
+    if (nome.isEmpty) {
+      setState(() {
+        _erroMedicamento = 'O nome do medicamento é obrigatório para salvar o alarme.';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, informe o nome do medicamento.'),
+          backgroundColor: Color(0xFFC0392B),
+        ),
+      );
+      _medicamentoFocusNode.requestFocus();
+      return;
+    }
+
     Navigator.pop(
       context,
       Alarme(
         id: widget.alarme?.id ?? '',
-        nome: _medicamentoController.text,
-        observacoes: _observacoesController.text,
+        nome: nome,
+        observacoes: _observacoesController.text.trim(),
         horario: _selectedTime,
         diasDeUso: _selectedUso ?? '',
         ativado: true,
