@@ -231,8 +231,8 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
   Widget build(BuildContext context) {
     final bool eSegundaTentativa = widget.tentativa >= 2;
 
-    return WillPopScope(
-      onWillPop: () async => _permitirFechar,
+    return PopScope(
+      canPop: _permitirFechar,
       child: Scaffold(
         backgroundColor: corFundo,
         body: FundoDecorado(
