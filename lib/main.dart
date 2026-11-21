@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lembrebem/backend/servico_alarme.dart';
 import 'package:lembrebem/backend/supabase_backend.dart';
 import 'package:lembrebem/telas/fundo_decorado.dart';
 import 'package:lembrebem/telas/tela_inicial.dart';
@@ -29,13 +30,24 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<AuthState>? _authSubscription;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    ServicoAlarme.instancia.definirNavigatorKey(_navigatorKey);
+
+    try {
+      if (SupabaseBackend.client.auth.currentUser != null) {
+        ServicoAlarme.instancia.inicializar(navKey: _navigatorKey);
+      }
+    } catch (_) {
+      // Ignora quando o Supabase ainda nao foi inicializado (ex: testes)
+    }
+
     try {
       _authSubscription = SupabaseBackend.client.auth.onAuthStateChange.listen((data) {
         if (data.event == AuthChangeEvent.passwordRecovery) {
@@ -47,6 +59,10 @@ class _MyAppState extends State<MyApp> {
             ),
             (route) => false,
           );
+        } else if (data.event == AuthChangeEvent.signedIn) {
+          ServicoAlarme.instancia.inicializar(navKey: _navigatorKey);
+        } else if (data.event == AuthChangeEvent.signedOut) {
+          ServicoAlarme.instancia.parar();
         }
       });
     } catch (_) {
@@ -55,7 +71,15 @@ class _MyAppState extends State<MyApp> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ServicoAlarme.instancia.verificarAlarmes();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _authSubscription?.cancel();
     super.dispose();
   }
