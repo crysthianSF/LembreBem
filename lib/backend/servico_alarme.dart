@@ -185,8 +185,8 @@ class ServicoAlarme {
       return;
     }
 
-    final context = _navigatorKey?.currentContext;
-    if (context == null) {
+    final navigator = _navigatorKey?.currentState;
+    if (navigator == null) {
       return;
     }
 
@@ -197,7 +197,7 @@ class ServicoAlarme {
         '${alarme.horario.hour.toString().padLeft(2, '0')}:${alarme.horario.minute.toString().padLeft(2, '0')}';
 
     try {
-      final resultado = await Navigator.of(context).push(
+      final resultado = await navigator.push(
         MaterialPageRoute<String>(
           fullscreenDialog: true,
           builder: (_) => TelaAlarmeDisparado(
@@ -294,7 +294,6 @@ class ServicoAlarme {
     if ((dias.contains('sab') || dias.contains('sáb')) && weekday == DateTime.saturday) return true;
     if (dias.contains('dom') && weekday == DateTime.sunday) return true;
 
-    // Caso não seja reconhecido nenhum padrão restritivo, toca por segurança
     return true;
   }
 }

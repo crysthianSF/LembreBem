@@ -237,276 +237,298 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
         backgroundColor: corFundo,
         body: FundoDecorado(
           child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  // Badge indicando chamada
-                  _badgeTentativa(eSegundaTentativa),
-
-                  const Spacer(),
-
-                  // Ícone animado
-                  ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: Container(
-                      width: 110,
-                      height: 110,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: eSegundaTentativa
-                            ? const Color(0xFFFEF3C7)
-                            : const Color(0xFFE0F2FE),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (eSegundaTentativa
-                                    ? const Color(0xFFF59E0B)
-                                    : corPrimaria)
-                                .withValues(alpha: 0.35),
-                            blurRadius: 24,
-                            spreadRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        eSegundaTentativa
-                            ? Icons.warning_amber_rounded
-                            : Icons.alarm,
-                        size: 58,
-                        color: eSegundaTentativa
-                            ? const Color(0xFFD97706)
-                            : corPrimariaEscura,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Título principal
-                  Text(
-                    eSegundaTentativa
-                        ? 'Atenção: 2ª Chamada!'
-                        : 'Hora do Medicamento!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: eSegundaTentativa
-                          ? const Color(0xFFB45309)
-                          : corPrimariaEscura,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    'Horário: ${widget.horarioFormatado}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: corTextoCinza,
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Cartão com detalhes do medicamento
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: cardDecoracao(
-                      borda: eSegundaTentativa
-                          ? const Color(0xFFF59E0B)
-                          : null,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: (constraints.maxHeight - 32).clamp(0.0, double.infinity),
                     ),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          widget.medicamentoNome,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: corTextoEscuro,
-                          ),
+                        Column(
+                          children: [
+                            const SizedBox(height: 12),
+                            // Badge indicando chamada
+                            _badgeTentativa(eSegundaTentativa),
+                          ],
                         ),
-                        if (widget.dose != null && widget.dose!.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            'Dose: ${widget.dose}',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: corTextoCinza,
-                            ),
-                          ),
-                        ],
-                        if (widget.observacoes != null &&
-                            widget.observacoes!.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F4F6),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.info_outline,
-                                  size: 18,
-                                  color: corTextoCinza,
+
+                        const SizedBox(height: 24),
+
+                        Column(
+                          children: [
+                            // Ícone animado
+                            ScaleTransition(
+                              scale: _pulseAnimation,
+                              child: Container(
+                                width: 110,
+                                height: 110,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: eSegundaTentativa
+                                      ? const Color(0xFFFEF3C7)
+                                      : const Color(0xFFE0F2FE),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (eSegundaTentativa
+                                              ? const Color(0xFFF59E0B)
+                                              : corPrimaria)
+                                          .withValues(alpha: 0.35),
+                                      blurRadius: 24,
+                                      spreadRadius: 4,
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    widget.observacoes!,
+                                child: Icon(
+                                  eSegundaTentativa
+                                      ? Icons.warning_amber_rounded
+                                      : Icons.alarm,
+                                  size: 58,
+                                  color: eSegundaTentativa
+                                      ? const Color(0xFFD97706)
+                                      : corPrimariaEscura,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Título principal
+                            Text(
+                              eSegundaTentativa
+                                  ? 'Atenção: 2ª Chamada!'
+                                  : 'Hora do Medicamento!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: eSegundaTentativa
+                                    ? const Color(0xFFB45309)
+                                    : corPrimariaEscura,
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            Text(
+                              'Horário: ${widget.horarioFormatado}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: corTextoCinza,
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // Cartão com detalhes do medicamento
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: cardDecoracao(
+                                borda: eSegundaTentativa
+                                    ? const Color(0xFFF59E0B)
+                                    : null,
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    widget.medicamentoNome,
+                                    textAlign: TextAlign.center,
                                     style: const TextStyle(
-                                      fontSize: 13,
-                                      fontStyle: FontStyle.italic,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
                                       color: corTextoEscuro,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  if (widget.dose != null && widget.dose!.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Dose: ${widget.dose}',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        color: corTextoCinza,
+                                      ),
+                                    ),
+                                  ],
+                                  if (widget.observacoes != null &&
+                                      widget.observacoes!.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3F4F6),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.info_outline,
+                                            size: 18,
+                                            color: corTextoCinza,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              widget.observacoes!,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontStyle: FontStyle.italic,
+                                                color: corTextoEscuro,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+
+                            // Alerta para 2ª chamada sobre notificação via WhatsApp ao cuidador
+                            if (eSegundaTentativa) ...[
+                              const SizedBox(height: 14),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF2F2),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFFCA5A5)),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.contact_phone_outlined,
+                                      color: Color(0xFFDC2626),
+                                      size: 24,
+                                    ),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Se não confirmar agora, seu cuidador vinculado receberá um aviso via WhatsApp!',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF991B1B),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        Column(
+                          children: [
+                            // Contador regressivo
+                            Text(
+                              'Silenciando automaticamente em ${_segundosRestantes}s',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: corTextoCinzaClaro,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Botão principal: Tomei o medicamento
+                            BotaoPrimario(
+                              texto: 'Tomei o medicamento',
+                              cor: const Color(0xFF16A34A),
+                              carregando: _processando,
+                              onPressed: _confirmarDoseTomada,
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // Botão secundário: Soneca na 1ª tentativa ou Desligar na 2ª tentativa
+                            if (!eSegundaTentativa) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.snooze, size: 20),
+                                  label: const Text(
+                                    'Lembrar em 10 minutos',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: corPrimariaEscura,
+                                    side: const BorderSide(color: corPrimaria, width: 1.5),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  onPressed: _processando ? null : () => _ativarSoneca(minutos: 10),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // Atalho para teste rápido de 1 minuto (facilita muito testar a 2ª chamada sem esperar 10 min)
+                              TextButton.icon(
+                                icon: const Icon(Icons.flash_on, size: 16, color: Color(0xFF0284C7)),
+                                label: const Text(
+                                  'Testar 2ª chamada em 1 minuto',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0284C7),
+                                  ),
+                                ),
+                                onPressed: _processando ? null : () => _ativarSoneca(minutos: 1),
+                              ),
+                            ] else
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(
+                                    Icons.close,
+                                    size: 20,
+                                    color: Color(0xFFDC2626),
+                                  ),
+                                  label: const Text(
+                                    'Desligar alarme',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFFDC2626),
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFFDC2626),
+                                    side: const BorderSide(
+                                      color: Color(0xFFEF4444),
+                                      width: 1.5,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  onPressed: _processando ? null : _escalarDosePerdida,
+                                ),
+                              ),
+
+                            const SizedBox(height: 12),
+                          ],
+                        ),
                       ],
                     ),
                   ),
-
-                  // Alerta para 2ª chamada sobre notificação via WhatsApp ao cuidador
-                  if (eSegundaTentativa) ...[
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF2F2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFFCA5A5)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(
-                            Icons.contact_phone_outlined,
-                            color: Color(0xFFDC2626),
-                            size: 24,
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Se não confirmar agora, seu cuidador vinculado receberá um aviso via WhatsApp!',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF991B1B),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  const Spacer(),
-
-                  // Contador regressivo
-                  Text(
-                    'Silenciando automaticamente em ${_segundosRestantes}s',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: corTextoCinzaClaro,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Botão principal: Tomei o medicamento
-                  BotaoPrimario(
-                    texto: 'Tomei o medicamento',
-                    cor: const Color(0xFF16A34A),
-                    carregando: _processando,
-                    onPressed: _confirmarDoseTomada,
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Botão secundário: Soneca na 1ª tentativa ou Desligar na 2ª tentativa
-                  if (!eSegundaTentativa) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.snooze, size: 20),
-                        label: const Text(
-                          'Lembrar em 10 minutos',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: corPrimariaEscura,
-                          side: const BorderSide(color: corPrimaria, width: 1.5),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        onPressed: _processando ? null : () => _ativarSoneca(minutos: 10),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Atalho para teste rápido de 1 minuto (facilita muito testar a 2ª chamada sem esperar 10 min)
-                    TextButton.icon(
-                      icon: const Icon(Icons.flash_on, size: 16, color: Color(0xFF0284C7)),
-                      label: const Text(
-                        'Testar 2ª chamada em 1 minuto',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0284C7),
-                        ),
-                      ),
-                      onPressed: _processando ? null : () => _ativarSoneca(minutos: 1),
-                    ),
-                  ] else
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(
-                          Icons.close,
-                          size: 20,
-                          color: Color(0xFFDC2626),
-                        ),
-                        label: const Text(
-                          'Desligar alarme',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFFDC2626),
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFDC2626),
-                          side: const BorderSide(
-                            color: Color(0xFFEF4444),
-                            width: 1.5,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        onPressed: _processando ? null : _escalarDosePerdida,
-                      ),
-                    ),
-
-                  const SizedBox(height: 12),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ),
