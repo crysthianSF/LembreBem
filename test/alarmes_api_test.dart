@@ -36,6 +36,44 @@ class _AppApiMemoria extends AppApi {
     medicamentoSalvo = payload;
     return {'id': 'novo-vinculo', ...payload};
   }
+
+  Map<String, dynamic>? doseSalva;
+  Map<String, dynamic>? doseAtualizada;
+  Map<String, dynamic>? doseHoje;
+  List<Map<String, dynamic>> contatosNotificacao = [];
+
+  @override
+  Future<Map<String, dynamic>> salvarRegistroDose({
+    required Map<String, dynamic> payload,
+  }) async {
+    doseSalva = payload;
+    return {'id': 'dose-1', ...payload};
+  }
+
+  @override
+  Future<Map<String, dynamic>> atualizarRegistroDose({
+    required String doseId,
+    required Map<String, dynamic> payload,
+  }) async {
+    doseAtualizada = {'id': doseId, ...payload};
+    return doseAtualizada!;
+  }
+
+  @override
+  Future<Map<String, dynamic>?> buscarRegistroDoseHojePorAlarme({
+    required String usuarioId,
+    required String alarmeId,
+    required DateTime data,
+  }) async {
+    return doseHoje;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> buscarContatosNotificacaoCuidador({
+    required String pacienteId,
+  }) async {
+    return contatosNotificacao;
+  }
 }
 
 void main() {
@@ -138,5 +176,86 @@ void main() {
     expect(alarme.intervalo, '12 em 12h');
     expect(alarme.medicamentoId, 42);
     expect(alarme.usuarioMedicamentoId, 'vinculo');
+  });
+
+  test('registrarDoseTomada salva novo registro quando nao existe registro previo', () async {
+    final horario = DateTime(2026, 11, 21, 8, 0);
+    final resultado = await alarmes.registrarDoseTomada(
+      alarmeId: 'alarme-1',
+      medicamentoNome: 'Dipirona',
+      horarioPrevisto: horario,
+      dose: '500mg',
+      usuarioId: 'user-123',
+    );
+
+    expect(resultado['id'], 'dose-1');
+    expect(app.doseSalva, isNotNull);
+    expect(app.doseSalva!['usuario_id'], 'user-123');
+    expect(app.doseSalva!['alarme_id'], 'alarme-1');
+    expect(app.doseSalva!['medicamento_nome'], 'Dipirona');
+    expect(app.doseSalva!['dose'], '500mg');
+    expect(app.doseSalva!['status'], 'tomada');
+    expect(app.doseSalva!['horario_previsto'], horario.toIso8601String());
+  });
+
+  test('registrarDoseTomada atualiza registro previo pendente para tomada', () async {
+    final horario = DateTime(2026, 11, 21, 8, 0);
+    app.doseHoje = {
+      'id': 'dose-existente',
+      'usuario_id': 'user-123',
+      'alarme_id': 'alarme-1',
+      'status': 'pendente',
+    };
+
+    final resultado = await alarmes.registrarDoseTomada(
+      alarmeId: 'alarme-1',
+      medicamentoNome: 'Dipirona',
+      horarioPrevisto: horario,
+      dose: '1cp',
+      usuarioId: 'user-123',
+    );
+
+    expect(resultado['id'], 'dose-existente');
+    expect(resultado['status'], 'tomada');
+    expect(resultado['dose'], '1cp');
+    expect(app.doseAtualizada, isNotNull);
+    expect(app.doseAtualizada!['status'], 'tomada');
+  });
+
+  test('registrarDosePerdidaEEscalar registra status perdida e lista destinatarios para notificacao', () async {
+    final horario = DateTime(2026, 11, 21, 8, 0);
+    app.contatosNotificacao = [
+      {'tipo': 'cuidador', 'nome': 'Maria Cuidadora', 'email': 'maria@teste.com'},
+      {'tipo': 'emergencia', 'nome': 'Carlos Filho', 'telefone': '11999999999'},
+    ];
+
+    final resultado = await alarmes.registrarDosePerdidaEEscalar(
+      alarmeId: 'alarme-1',
+      medicamentoNome: 'Losartana',
+      horarioPrevisto: horario,
+      usuarioId: 'user-123',
+    );
+
+    expect(resultado['sucesso'], isTrue);
+    expect(resultado['precisa_notificar'], isTrue);
+    expect(resultado['medicamento'], 'Losartana');
+    expect(resultado['destinatarios'], hasLength(2));
+    expect(app.doseSalva!['status'], 'perdida');
+  });
+
+  test('verificarDoseJaTomadaHoje retorna true se status for tomada e false caso contrario', () async {
+    final hoje = DateTime.now();
+
+    // Sem registro
+    app.doseHoje = null;
+    expect(await alarmes.verificarDoseJaTomadaHoje(alarmeId: 'a1', data: hoje, usuarioId: 'u1'), isFalse);
+
+    // Registro pendente
+    app.doseHoje = {'id': 'd1', 'status': 'pendente'};
+    expect(await alarmes.verificarDoseJaTomadaHoje(alarmeId: 'a1', data: hoje, usuarioId: 'u1'), isFalse);
+
+    // Registro tomada
+    app.doseHoje = {'id': 'd1', 'status': 'tomada'};
+    expect(await alarmes.verificarDoseJaTomadaHoje(alarmeId: 'a1', data: hoje, usuarioId: 'u1'), isTrue);
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lembrebem/backend/app_api.dart';
+import 'package:lembrebem/backend/servico_alarme.dart';
 import 'package:lembrebem/backend/supabase_backend.dart';
 import 'package:lembrebem/menu_rodape.dart';
 import 'package:lembrebem/modelo_alarme.dart' as modelo;
@@ -58,6 +59,7 @@ class _TelaAlarmeState extends State<TelaAlarme> {
             response.map((json) => modelo.Alarme.fromJson(json)).toList();
         _carregando = false;
       });
+      ServicoAlarme.instancia.definirAlarmesAtivos(alarmeList);
     } catch (e) {
       if (!mounted) {
         return;

@@ -304,6 +304,126 @@ class AppApi {
     );
   }
 
+  Future<Map<String, dynamic>> salvarRegistroDose({
+    required Map<String, dynamic> payload,
+  }) async {
+    final response = await _comTimeout(
+      _app.from('registro_doses').insert(payload).select().maybeSingle(),
+    );
+
+    if (response == null) {
+      throw StateError('Falha ao salvar registro de dose.');
+    }
+
+    return Map<String, dynamic>.from(response as Map);
+  }
+
+  Future<Map<String, dynamic>> atualizarRegistroDose({
+    required String doseId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final response = await _comTimeout(
+      _app
+          .from('registro_doses')
+          .update(payload)
+          .eq('id', doseId)
+          .select()
+          .maybeSingle(),
+    );
+
+    if (response == null) {
+      throw StateError('Falha ao atualizar registro de dose.');
+    }
+
+    return Map<String, dynamic>.from(response as Map);
+  }
+
+  Future<Map<String, dynamic>?> buscarRegistroDoseHojePorAlarme({
+    required String usuarioId,
+    required String alarmeId,
+    required DateTime data,
+  }) async {
+    final inicioDia = DateTime(data.year, data.month, data.day);
+    final fimDia = inicioDia.add(const Duration(days: 1));
+
+    try {
+      final response = await _comTimeout(
+        _app
+            .from('registro_doses')
+            .select()
+            .eq('usuario_id', usuarioId)
+            .eq('alarme_id', alarmeId)
+            .gte('horario_previsto', inicioDia.toIso8601String())
+            .lt('horario_previsto', fimDia.toIso8601String())
+            .order('horario_previsto', ascending: false)
+            .limit(1)
+            .maybeSingle(),
+      );
+
+      if (response == null) {
+        return null;
+      }
+      return Map<String, dynamic>.from(response as Map);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> buscarContatosNotificacaoCuidador({
+    required String pacienteId,
+  }) async {
+    final contatos = <Map<String, dynamic>>[];
+
+    try {
+      final respostaEmergencia = await _comTimeout(
+        _app
+            .from('contatos_emergencia')
+            .select('nome, telefone')
+            .eq('usuario_id', pacienteId),
+      );
+      for (final item in _asListOfMap(respostaEmergencia)) {
+        contatos.add({
+          'tipo': 'emergencia',
+          'nome': item['nome']?.toString() ?? '',
+          'telefone': item['telefone']?.toString() ?? '',
+        });
+      }
+    } catch (_) {}
+
+    try {
+      final vinculos = await _comTimeout(
+        _app
+            .from('cuidador_pacientes')
+            .select('cuidador_id')
+            .eq('paciente_id', pacienteId),
+      );
+      final ids =
+          _asListOfMap(vinculos)
+              .map((v) => v['cuidador_id']?.toString())
+              .whereType<String>()
+              .toList();
+
+      if (ids.isNotEmpty) {
+        final cuidadores = await _comTimeout(
+          _app
+              .from('cuidadores')
+              .select('id, nome, email')
+              .inFilter('id', ids),
+        );
+        for (final c in _asListOfMap(cuidadores)) {
+          contatos.add({
+            'tipo': 'cuidador',
+            'id': c['id']?.toString() ?? '',
+            'nome': c['nome']?.toString() ?? '',
+            'email': c['email']?.toString() ?? '',
+          });
+        }
+      }
+    } catch (_) {}
+
+    return contatos;
+  }
+
   Future<T> _comTimeout<T>(Future<T> request, {Duration? duration}) {
     return request.timeout(duration ?? _requestTimeout);
   }

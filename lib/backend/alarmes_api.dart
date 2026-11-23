@@ -98,6 +98,124 @@ class AlarmesApi {
     );
   }
 
+  Future<Map<String, dynamic>> registrarDoseTomada({
+    required String alarmeId,
+    required String medicamentoNome,
+    required DateTime horarioPrevisto,
+    String? dose,
+    String? usuarioId,
+  }) async {
+    final uid = usuarioId ?? SupabaseBackend.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) {
+      throw StateError('Usuario nao autenticado para registrar dose.');
+    }
+
+    final existente = await _appApi.buscarRegistroDoseHojePorAlarme(
+      usuarioId: uid,
+      alarmeId: alarmeId,
+      data: horarioPrevisto,
+    );
+
+    if (existente != null && existente['id'] != null) {
+      return await _appApi.atualizarRegistroDose(
+        doseId: existente['id'].toString(),
+        payload: {
+          'status': 'tomada',
+          'registrado_em': DateTime.now().toIso8601String(),
+          if (dose != null && dose.isNotEmpty) 'dose': dose,
+        },
+      );
+    }
+
+    return await _appApi.salvarRegistroDose(
+      payload: {
+        'usuario_id': uid,
+        'alarme_id': alarmeId,
+        'medicamento_nome': medicamentoNome,
+        if (dose != null && dose.isNotEmpty) 'dose': dose,
+        'horario_previsto': horarioPrevisto.toIso8601String(),
+        'status': 'tomada',
+        'registrado_em': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> registrarDosePerdidaEEscalar({
+    required String alarmeId,
+    required String medicamentoNome,
+    required DateTime horarioPrevisto,
+    String? dose,
+    String? usuarioId,
+  }) async {
+    final uid = usuarioId ?? SupabaseBackend.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) {
+      throw StateError('Usuario nao autenticado para registrar dose perdida.');
+    }
+
+    Map<String, dynamic> doseSalva;
+    final existente = await _appApi.buscarRegistroDoseHojePorAlarme(
+      usuarioId: uid,
+      alarmeId: alarmeId,
+      data: horarioPrevisto,
+    );
+
+    if (existente != null && existente['id'] != null) {
+      doseSalva = await _appApi.atualizarRegistroDose(
+        doseId: existente['id'].toString(),
+        payload: {
+          'status': 'perdida',
+          'registrado_em': DateTime.now().toIso8601String(),
+          if (dose != null && dose.isNotEmpty) 'dose': dose,
+        },
+      );
+    } else {
+      doseSalva = await _appApi.salvarRegistroDose(
+        payload: {
+          'usuario_id': uid,
+          'alarme_id': alarmeId,
+          'medicamento_nome': medicamentoNome,
+          if (dose != null && dose.isNotEmpty) 'dose': dose,
+          'horario_previsto': horarioPrevisto.toIso8601String(),
+          'status': 'perdida',
+          'registrado_em': DateTime.now().toIso8601String(),
+        },
+      );
+    }
+
+    final contatosNotificacao = await _appApi.buscarContatosNotificacaoCuidador(
+      pacienteId: uid,
+    );
+
+    return {
+      'sucesso': true,
+      'dose': doseSalva,
+      'precisa_notificar': true,
+      'motivo': 'Paciente nao confirmou o medicamento apos os avisos do alarme.',
+      'medicamento': medicamentoNome,
+      'horario_previsto': horarioPrevisto.toIso8601String(),
+      'destinatarios': contatosNotificacao,
+    };
+  }
+
+  Future<bool> verificarDoseJaTomadaHoje({
+    required String alarmeId,
+    required DateTime data,
+    String? usuarioId,
+  }) async {
+    final uid = usuarioId ?? SupabaseBackend.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) {
+      return false;
+    }
+
+    final registro = await _appApi.buscarRegistroDoseHojePorAlarme(
+      usuarioId: uid,
+      alarmeId: alarmeId,
+      data: data,
+    );
+
+    return registro != null && registro['status'] == 'tomada';
+  }
+
   Future<String?> _garantirUsuarioMedicamento({
     required String usuarioId,
     required int medicamentoId,
