@@ -31,7 +31,7 @@ class TelaAlarmeDisparado extends StatefulWidget {
   final DateTime? horarioPrevisto;
   final Future<void> Function()? aoTomarMedicamento;
   final void Function(int minutos)? aoPedirSoneca;
-  final Future<void> Function()? aoEscalarCuidador;
+  final Future<Map<String, dynamic>> Function()? aoEscalarCuidador;
 
   @override
   State<TelaAlarmeDisparado> createState() => _TelaAlarmeDisparadoState();
@@ -72,7 +72,9 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
 
     // Repete o bipe sonoro e vibração a cada 1.5s enquanto o alarme estiver tocando
     _efeitoSonoroTimer?.cancel();
-    _efeitoSonoroTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+    _efeitoSonoroTimer = Timer.periodic(const Duration(milliseconds: 1500), (
+      _,
+    ) {
       if (!mounted) return;
       GerenciadorSomAlarme.tocarBeepAlarme();
       HapticFeedback.heavyImpact();
@@ -180,7 +182,9 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
 
     messenger?.showSnackBar(
       SnackBar(
-        content: Text('Soneca ativada. O alarme tocará novamente em $minutos minuto${minutos > 1 ? 's' : ''}.'),
+        content: Text(
+          'Soneca ativada. O alarme tocará novamente em $minutos minuto${minutos > 1 ? 's' : ''}.',
+        ),
         backgroundColor: const Color(0xFF0284C7),
       ),
     );
@@ -196,11 +200,12 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
     final messenger = ScaffoldMessenger.maybeOf(context);
 
     try {
+      final Map<String, dynamic> resultado;
       if (widget.aoEscalarCuidador != null) {
-        await widget.aoEscalarCuidador!();
+        resultado = await widget.aoEscalarCuidador!();
       } else {
         final horario = widget.horarioPrevisto ?? DateTime.now();
-        await _alarmesApi.registrarDosePerdidaEEscalar(
+        resultado = await _alarmesApi.registrarDosePerdidaEEscalar(
           alarmeId: widget.alarmeId,
           medicamentoNome: widget.medicamentoNome,
           horarioPrevisto: horario,
@@ -209,14 +214,28 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
       }
 
       messenger?.showSnackBar(
-        const SnackBar(
-          content: Text('Dose registrada como perdida. Notificação enviada ao cuidador.'),
-          backgroundColor: Color(0xFFD97706),
+        SnackBar(
+          content: Text(
+            'Dose registrada como perdida. '
+            '${resultado['mensagem_notificacao'] ?? 'O envio do aviso não foi confirmado.'}',
+          ),
+          backgroundColor: const Color(0xFFD97706),
         ),
       );
       _fecharComResultado('perdida');
     } catch (_) {
-      _fecharComResultado('perdida');
+      if (mounted) {
+        messenger?.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Não foi possível registrar a dose perdida. '
+              'Confira sua conexão e tente novamente.',
+            ),
+            backgroundColor: Color(0xFFC0392B),
+          ),
+        );
+        setState(() => _processando = false);
+      }
     }
   }
 
@@ -240,10 +259,16 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minHeight: (constraints.maxHeight - 32).clamp(0.0, double.infinity),
+                      minHeight: (constraints.maxHeight - 32).clamp(
+                        0.0,
+                        double.infinity,
+                      ),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -268,9 +293,10 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                                 height: 110,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: eSegundaTentativa
-                                      ? const Color(0xFFFEF3C7)
-                                      : const Color(0xFFE0F2FE),
+                                  color:
+                                      eSegundaTentativa
+                                          ? const Color(0xFFFEF3C7)
+                                          : const Color(0xFFE0F2FE),
                                   boxShadow: [
                                     BoxShadow(
                                       color: (eSegundaTentativa
@@ -287,9 +313,10 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                                       ? Icons.warning_amber_rounded
                                       : Icons.alarm,
                                   size: 58,
-                                  color: eSegundaTentativa
-                                      ? const Color(0xFFD97706)
-                                      : corPrimariaEscura,
+                                  color:
+                                      eSegundaTentativa
+                                          ? const Color(0xFFD97706)
+                                          : corPrimariaEscura,
                                 ),
                               ),
                             ),
@@ -305,9 +332,10 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                               style: TextStyle(
                                 fontSize: 26,
                                 fontWeight: FontWeight.bold,
-                                color: eSegundaTentativa
-                                    ? const Color(0xFFB45309)
-                                    : corPrimariaEscura,
+                                color:
+                                    eSegundaTentativa
+                                        ? const Color(0xFFB45309)
+                                        : corPrimariaEscura,
                               ),
                             ),
 
@@ -329,9 +357,10 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                               width: double.infinity,
                               padding: const EdgeInsets.all(20),
                               decoration: cardDecoracao(
-                                borda: eSegundaTentativa
-                                    ? const Color(0xFFF59E0B)
-                                    : null,
+                                borda:
+                                    eSegundaTentativa
+                                        ? const Color(0xFFF59E0B)
+                                        : null,
                               ),
                               child: Column(
                                 children: [
@@ -344,7 +373,8 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                                       color: corTextoEscuro,
                                     ),
                                   ),
-                                  if (widget.dose != null && widget.dose!.isNotEmpty) ...[
+                                  if (widget.dose != null &&
+                                      widget.dose!.isNotEmpty) ...[
                                     const SizedBox(height: 6),
                                     Text(
                                       'Dose: ${widget.dose}',
@@ -389,7 +419,7 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                               ),
                             ),
 
-                            // Alerta para 2ª chamada sobre notificação via WhatsApp ao cuidador
+                            // O envio depende dos contatos e da autorização no WhatsApp.
                             if (eSegundaTentativa) ...[
                               const SizedBox(height: 14),
                               Container(
@@ -400,7 +430,9 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFEF2F2),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFFCA5A5)),
+                                  border: Border.all(
+                                    color: const Color(0xFFFCA5A5),
+                                  ),
                                 ),
                                 child: const Row(
                                   children: [
@@ -412,7 +444,7 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                                     SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
-                                        'Se não confirmar agora, seu cuidador vinculado receberá um aviso via WhatsApp!',
+                                        'Se não confirmar, tentaremos avisar os contatos de confiança que autorizaram receber mensagens pelo WhatsApp.',
                                         style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,
@@ -466,19 +498,31 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                                   ),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: corPrimariaEscura,
-                                    side: const BorderSide(color: corPrimaria, width: 1.5),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    side: const BorderSide(
+                                      color: corPrimaria,
+                                      width: 1.5,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                   ),
-                                  onPressed: _processando ? null : () => _ativarSoneca(minutos: 10),
+                                  onPressed:
+                                      _processando
+                                          ? null
+                                          : () => _ativarSoneca(minutos: 10),
                                 ),
                               ),
                               const SizedBox(height: 8),
                               // Atalho para teste rápido de 1 minuto (facilita muito testar a 2ª chamada sem esperar 10 min)
                               TextButton.icon(
-                                icon: const Icon(Icons.flash_on, size: 16, color: Color(0xFF0284C7)),
+                                icon: const Icon(
+                                  Icons.flash_on,
+                                  size: 16,
+                                  color: Color(0xFF0284C7),
+                                ),
                                 label: const Text(
                                   'Testar 2ª chamada em 1 minuto',
                                   style: TextStyle(
@@ -487,7 +531,10 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                                     color: Color(0xFF0284C7),
                                   ),
                                 ),
-                                onPressed: _processando ? null : () => _ativarSoneca(minutos: 1),
+                                onPressed:
+                                    _processando
+                                        ? null
+                                        : () => _ativarSoneca(minutos: 1),
                               ),
                             ] else
                               SizedBox(
@@ -512,12 +559,15 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
                                       color: Color(0xFFEF4444),
                                       width: 1.5,
                                     ),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                   ),
-                                  onPressed: _processando ? null : _escalarDosePerdida,
+                                  onPressed:
+                                      _processando ? null : _escalarDosePerdida,
                                 ),
                               ),
 
@@ -540,25 +590,30 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: eSegundaTentativa
-            ? const Color(0xFFFEF3C7)
-            : const Color(0xFFE0F2FE),
+        color:
+            eSegundaTentativa
+                ? const Color(0xFFFEF3C7)
+                : const Color(0xFFE0F2FE),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: eSegundaTentativa
-              ? const Color(0xFFF59E0B)
-              : const Color(0xFF38BDF8),
+          color:
+              eSegundaTentativa
+                  ? const Color(0xFFF59E0B)
+                  : const Color(0xFF38BDF8),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            eSegundaTentativa ? Icons.priority_high : Icons.notifications_active,
+            eSegundaTentativa
+                ? Icons.priority_high
+                : Icons.notifications_active,
             size: 16,
-            color: eSegundaTentativa
-                ? const Color(0xFFB45309)
-                : const Color(0xFF0369A1),
+            color:
+                eSegundaTentativa
+                    ? const Color(0xFFB45309)
+                    : const Color(0xFF0369A1),
           ),
           const SizedBox(width: 6),
           Text(
@@ -566,9 +621,10 @@ class _TelaAlarmeDisparadoState extends State<TelaAlarmeDisparado>
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: eSegundaTentativa
-                  ? const Color(0xFFB45309)
-                  : const Color(0xFF0369A1),
+              color:
+                  eSegundaTentativa
+                      ? const Color(0xFFB45309)
+                      : const Color(0xFF0369A1),
             ),
           ),
         ],

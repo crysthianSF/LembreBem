@@ -1,4 +1,4 @@
-package com.example.lembrebem
+package br.com.lembrebem.app
 
 import io.flutter.embedding.android.FlutterActivity
 

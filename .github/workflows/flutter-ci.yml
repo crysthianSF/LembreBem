@@ -16,9 +16,26 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: '3.44.2'
+  FLUTTER_VERSION: '3.47.4'
 
 jobs:
+  whatsapp:
+    name: WhatsApp / funcoes e banco
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: '2.9.8'
+      - name: Testar funcoes sem acesso a rede
+        working-directory: supabase
+        run: |
+          deno task check
+          deno task test
+
   analysis:
     name: Flutter / analise
     runs-on: ubuntu-24.04

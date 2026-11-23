@@ -1,16 +1,9 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-import 'package:lembrebem/backend/catalogo_api_local_config.dart';
 import 'package:lembrebem/backend/local_cache.dart';
 import 'package:lembrebem/backend/supabase_backend.dart';
 import 'package:lembrebem/utils/normalizacao.dart';
 
 class CatalogoApi {
   static const Duration _requestTimeout = Duration(seconds: 12);
-  static const String _catalogoApiUrlFromEnv = String.fromEnvironment(
-    'CATALOGO_API_URL',
-  );
   static const String _camposResumoMedicamento =
       'id,medicamento_id,codigo_ggrem,registro,nome_produto,'
       'nome_produto_normalizado,principio_ativo,principio_ativo_normalizado,'
@@ -25,18 +18,6 @@ class CatalogoApi {
   static final Map<String, Map<String, dynamic>> _cacheDetalhesMemoria = {};
 
   final LocalCache _localCache = LocalCache();
-  final http.Client _clienteHttp = http.Client();
-
-  String get _baseUrlApiLocal {
-    final urlBase =
-        _catalogoApiUrlFromEnv.trim().isNotEmpty
-            ? _catalogoApiUrlFromEnv.trim()
-            : localCatalogoApiUrl.trim();
-
-    return urlBase.replaceAll(RegExp(r'/$'), '');
-  }
-
-  bool get _apiLocalDisponivel => _baseUrlApiLocal.isNotEmpty;
 
   Future<List<Map<String, dynamic>>> listarMedicamentos({
     int limite = 100,
@@ -46,13 +27,7 @@ class CatalogoApi {
       await _localCache.salvarCatalogoMedicamentos(itens);
       return itens;
     } catch (_) {
-      try {
-        final itens = await _listarMedicamentosViaApiLocal(limite: limite);
-        await _localCache.salvarCatalogoMedicamentos(itens);
-        return itens;
-      } catch (_) {
-        return _localCache.carregarCatalogoMedicamentos();
-      }
+      return _localCache.carregarCatalogoMedicamentos();
     }
   }
 
@@ -80,25 +55,15 @@ class CatalogoApi {
       _salvarBuscaEmMemoria(chaveBusca, resultados);
       return resultados;
     } catch (_) {
-      try {
-        final resultados = await _buscarMedicamentosViaApiLocal(
-          termoLimpo,
-          limite: limite,
-        );
-        await _localCache.salvarCatalogoMedicamentos(resultados);
-        _salvarBuscaEmMemoria(chaveBusca, resultados);
-        return resultados;
-      } catch (_) {
-        final resultadosCache = await _localCache.buscarMedicamentosNoCache(
-          termoLimpo,
-          limite: limite,
-        );
-        if (resultadosCache.isEmpty) {
-          rethrow;
-        }
-        _salvarBuscaEmMemoria(chaveBusca, resultadosCache);
-        return resultadosCache;
+      final resultadosCache = await _localCache.buscarMedicamentosNoCache(
+        termoLimpo,
+        limite: limite,
+      );
+      if (resultadosCache.isEmpty) {
+        rethrow;
       }
+      _salvarBuscaEmMemoria(chaveBusca, resultadosCache);
+      return resultadosCache;
     }
   }
 
@@ -121,22 +86,13 @@ class CatalogoApi {
       }
       return medicamento;
     } catch (_) {
-      try {
-        final medicamento = await _buscarMedicamentoPorIdViaApiLocal(idLimpo);
-        if (medicamento != null) {
-          await _localCache.salvarCatalogoMedicamentos([medicamento]);
-          _salvarDetalheEmMemoria(medicamento);
-        }
-        return medicamento;
-      } catch (_) {
-        final medicamentoCache = await _localCache.buscarMedicamentoPorId(
-          idLimpo,
-        );
-        if (medicamentoCache != null) {
-          _salvarDetalheEmMemoria(medicamentoCache);
-        }
-        return medicamentoCache;
+      final medicamentoCache = await _localCache.buscarMedicamentoPorId(
+        idLimpo,
+      );
+      if (medicamentoCache != null) {
+        _salvarDetalheEmMemoria(medicamentoCache);
       }
+      return medicamentoCache;
     }
   }
 
@@ -185,31 +141,15 @@ class CatalogoApi {
       }
       return encontrados;
     } catch (_) {
-      try {
-        final itens = await _buscarMedicamentosPorIdsViaApiLocal(faltantes);
-        for (final item in itens) {
-          final id = item['id']?.toString();
-          if (id == null || id.isEmpty) {
-            continue;
-          }
-          encontrados[id] = item;
+      final cache = await _localCache.carregarCatalogoMedicamentos();
+      for (final item in cache) {
+        final id = item['id']?.toString();
+        if (id == null || id.isEmpty || !faltantes.contains(id)) {
+          continue;
         }
-        if (itens.isNotEmpty) {
-          await _localCache.salvarCatalogoMedicamentos(itens);
-          _salvarDetalhesEmMemoria(itens);
-        }
-        return encontrados;
-      } catch (_) {
-        final cache = await _localCache.carregarCatalogoMedicamentos();
-        for (final item in cache) {
-          final id = item['id']?.toString();
-          if (id == null || id.isEmpty || !faltantes.contains(id)) {
-            continue;
-          }
-          final normalizado = _normalizarMedicamento(item);
-          encontrados[id] = normalizado;
-          _salvarDetalheEmMemoria(normalizado);
-        }
+        final normalizado = _normalizarMedicamento(item);
+        encontrados[id] = normalizado;
+        _salvarDetalheEmMemoria(normalizado);
       }
     }
 
@@ -346,128 +286,6 @@ class CatalogoApi {
         .whereType<Map>()
         .map((item) => _normalizarMedicamento(item))
         .toList();
-  }
-
-  Future<List<Map<String, dynamic>>> _listarMedicamentosViaApiLocal({
-    required int limite,
-  }) async {
-    if (!_apiLocalDisponivel) {
-      throw StateError('API local do catalogo nao configurada.');
-    }
-
-    final response = await _getJsonApiLocal(
-      '/api/medicamentos',
-      queryParameters: {'limite': '$limite'},
-    );
-    return _extrairListaApi(response);
-  }
-
-  Future<List<Map<String, dynamic>>> _buscarMedicamentosViaApiLocal(
-    String termo, {
-    required int limite,
-  }) async {
-    if (!_apiLocalDisponivel) {
-      throw StateError('API local do catalogo nao configurada.');
-    }
-
-    final response = await _getJsonApiLocal(
-      '/api/medicamentos/busca',
-      queryParameters: {'termo': _sanitizarTermo(termo), 'limite': '$limite'},
-    );
-    return _extrairListaApi(response);
-  }
-
-  Future<Map<String, dynamic>?> _buscarMedicamentoPorIdViaApiLocal(
-    String id,
-  ) async {
-    if (!_apiLocalDisponivel) {
-      throw StateError('API local do catalogo nao configurada.');
-    }
-
-    final response = await _getJsonApiLocal('/api/medicamentos/$id');
-    return _extrairObjetoApi(response);
-  }
-
-  Future<List<Map<String, dynamic>>> _buscarMedicamentosPorIdsViaApiLocal(
-    List<String> ids,
-  ) async {
-    if (!_apiLocalDisponivel) {
-      throw StateError('API local do catalogo nao configurada.');
-    }
-
-    final idsLimpos =
-        ids.map(_somenteDigitos).where((id) => id.isNotEmpty).toSet().toList();
-    if (idsLimpos.isEmpty) {
-      return const [];
-    }
-
-    final response = await _getJsonApiLocal(
-      '/api/medicamentos/ids',
-      queryParameters: {'ids': idsLimpos.join(',')},
-    );
-    return _extrairListaApi(response);
-  }
-
-  Future<dynamic> _getJsonApiLocal(
-    String caminho, {
-    Map<String, String?> queryParameters = const {},
-  }) async {
-    final query = <String, String>{};
-    for (final entry in queryParameters.entries) {
-      final valor = entry.value;
-      if (valor == null || valor.trim().isEmpty) {
-        continue;
-      }
-      query[entry.key] = valor;
-    }
-
-    final uri = Uri.parse(
-      '$_baseUrlApiLocal$caminho',
-    ).replace(queryParameters: query);
-    final response = await _clienteHttp.get(uri).timeout(_requestTimeout);
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError(
-        'Falha ao consultar catalogo. HTTP ${response.statusCode}: ${response.body}',
-      );
-    }
-
-    if (response.body.trim().isEmpty) {
-      return const {};
-    }
-
-    return jsonDecode(response.body);
-  }
-
-  List<Map<String, dynamic>> _extrairListaApi(dynamic response) {
-    if (response is List) {
-      return response
-          .whereType<Map>()
-          .map((item) => _normalizarMedicamento(item))
-          .toList();
-    }
-
-    if (response is Map && response['dados'] is List) {
-      final lista = response['dados'] as List;
-      return lista
-          .whereType<Map>()
-          .map((item) => _normalizarMedicamento(item))
-          .toList();
-    }
-
-    return const [];
-  }
-
-  Map<String, dynamic>? _extrairObjetoApi(dynamic response) {
-    if (response is Map && response['dado'] is Map) {
-      return _normalizarMedicamento(response['dado'] as Map);
-    }
-
-    if (response is Map && response.isNotEmpty) {
-      return _normalizarMedicamento(response);
-    }
-
-    return null;
   }
 
   String _chaveBusca(String termo, int limite) {

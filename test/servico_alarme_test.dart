@@ -51,7 +51,18 @@ class _FakeAlarmesApi extends AlarmesApi {
     String? usuarioId,
   }) async {
     alarmeEscaladoId = alarmeId;
-    return {'id': 'd1', 'status': 'perdida', 'precisa_notificar': true};
+    return {
+      'sucesso': true,
+      'dose': {'id': 'd1', 'status': 'perdida'},
+      'notificacao': {
+        'status': 'skipped',
+        'accepted': 0,
+        'failed': 0,
+        'skipped': 0,
+      },
+      'mensagem_notificacao':
+          'Nenhum contato com WhatsApp autorizado está disponível.',
+    };
   }
 }
 
