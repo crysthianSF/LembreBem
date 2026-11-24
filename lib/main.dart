@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:lembrebem/backend/servico_alarme.dart';
 import 'package:lembrebem/backend/supabase_backend.dart';
 import 'package:lembrebem/telas/fundo_decorado.dart';
 import 'package:lembrebem/telas/tela_inicial.dart';
+import 'package:lembrebem/telas/tela_redefinir_senha.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,21 +21,80 @@ void main() async {
   runApp(MyApp(startupError: startupError));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key, this.startupError});
 
   final String? startupError;
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    ServicoAlarme.instancia.definirNavigatorKey(_navigatorKey);
+
+    try {
+      if (SupabaseBackend.client.auth.currentUser != null) {
+        ServicoAlarme.instancia.inicializar(navKey: _navigatorKey);
+      }
+    } catch (_) {
+      // Ignora quando o Supabase ainda nao foi inicializado (ex: testes)
+    }
+
+    try {
+      _authSubscription = SupabaseBackend.client.auth.onAuthStateChange.listen((data) {
+        if (data.event == AuthChangeEvent.passwordRecovery) {
+          _navigatorKey.currentState?.pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => const TelaRedefinirSenha(
+                etapaInicial: EtapaRecuperacao.novaSenha,
+              ),
+            ),
+            (route) => false,
+          );
+        } else if (data.event == AuthChangeEvent.signedIn) {
+          ServicoAlarme.instancia.inicializar(navKey: _navigatorKey);
+        } else if (data.event == AuthChangeEvent.signedOut) {
+          ServicoAlarme.instancia.parar();
+        }
+      });
+    } catch (_) {
+      // Ignora em testes automatizados onde o Supabase ainda nao foi inicializado
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ServicoAlarme.instancia.verificarAlarmes();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'LembreBem',
       debugShowCheckedModeBanner: false,
       theme: _temaLembreBem(),
       home:
-          startupError == null
+          widget.startupError == null
               ? const TelaInicial()
-              : _TelaErroInicializacao(erro: startupError!),
+              : _TelaErroInicializacao(erro: widget.startupError!),
     );
   }
 

@@ -1,5 +1,8 @@
 import 'package:lembrebem/backend/supabase_backend.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 
 class CuidadorApi {
   static const Duration _timeout = Duration(seconds: 10);
@@ -178,4 +181,40 @@ class CuidadorApi {
       };
     });
   }
+
+  Future<String> emitirConviteCuidador({required String cuidadorId}) async {
+    final user = SupabaseBackend.client.auth.currentUser;
+    if (user == null) {
+      throw StateError('Usuário precisa estar autenticado como paciente.');
+    }
+
+    final random = Random.secure();
+    final bytes = List<int>.generate(32, (i) => random.nextInt(256));
+    
+    final tokenOriginal = base64UrlEncode(bytes);
+
+    final tokenHash = sha256.convert(utf8.encode(tokenOriginal)).toString();
+
+    await _app.rpc('emitir_convite_paciente', params: {
+      'p_cuidador_id': cuidadorId,
+      'p_token_hash': tokenHash,
+    }).timeout(_timeout);
+
+    return tokenOriginal;
+  }
+
+  Future<void> aceitarConvitePaciente({required String tokenRecebido}) async {
+    final user = SupabaseBackend.client.auth.currentUser;
+    if (user == null) {
+      throw StateError('Cuidador precisa estar autenticado.');
+    }
+
+    // Calcula o hash SHA-256 do token recebido para enviar ao banco
+    final tokenHash = sha256.convert(utf8.encode(tokenRecebido.trim())).toString();
+
+    await _app.rpc('consumir_convite_cuidador', params: {
+      'p_token_hash': tokenHash,
+    }).timeout(_timeout);
+  }
+
 }

@@ -13,9 +13,19 @@
 migrate_working_dir/
 node_modules/
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 npm-debug.log*
+
+# Local credentials and Android distribution artifacts
+key.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.apk
+*.aab
+*.apks
 
 # IntelliJ related
 *.iml
@@ -34,6 +44,7 @@ npm-debug.log*
 .pub-cache/
 .pub/
 /build/
+/coverage/
 
 # Symbolication related
 app.*.symbols

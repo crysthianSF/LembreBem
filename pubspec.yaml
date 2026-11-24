@@ -1,7 +1,7 @@
 name: lembrebem
 description: "Lembretes de medicamentos e acompanhamento de pacientes."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.7.0
@@ -9,11 +9,11 @@ dependencies:
   flutter:
     sdk: flutter
   supabase_flutter: ^2.12.0
+  crypto: ^3.0.6
   mask_text_input_formatter: ^2.6.0
   intl: ^0.18.1
   image_picker: ^1.1.2
   shared_preferences: ^2.5.3
-  http: ^1.2.2
   url_launcher: ^6.3.0
   fl_chart: ^0.69.2
   file_picker: ^8.1.4
@@ -25,6 +25,7 @@ dependencies:
   latlong2: ^0.9.1
 
 dev_dependencies:
+  http: ^1.2.2
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
