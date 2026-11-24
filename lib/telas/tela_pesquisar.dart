@@ -99,20 +99,14 @@ class _TelaPesquisarState extends State<TelaPesquisar> {
 
   Future<void> _obterLocalizacao() async {
     try {
-      print('Iniciando localização...');
-
       final posicao = await Geolocator.getCurrentPosition();
-
-      print('Latitude: ${posicao.latitude} | Longitude: ${posicao.longitude}');
 
       if (mounted) {
         setState(() {
           _posicaoAtual = posicao;
         });
       }
-    } catch (e) {
-      print('ERRO LOCALIZACAO: $e');
-    }
+    } catch (_) {}
   }
 
   Future<void> _buscar(String termo) async {
