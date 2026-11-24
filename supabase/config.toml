@@ -1,0 +1,12 @@
+project_id = "lembrebem"
+
+# O JWT e validado pelo handler em /auth/v1/user; permite signing keys modernas.
+[functions.enviar-relatorio-whatsapp]
+verify_jwt = false
+
+[functions.enviar-alerta-whatsapp]
+verify_jwt = false
+
+# A Meta nao envia JWT Supabase. GET usa verify_token; POST exige HMAC do App Secret.
+[functions.whatsapp-webhook]
+verify_jwt = false

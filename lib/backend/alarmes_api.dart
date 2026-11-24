@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:lembrebem/backend/app_api.dart';
 import 'package:lembrebem/backend/supabase_backend.dart';
+import 'package:lembrebem/backend/whatsapp_api.dart';
 
 class AlarmesApi {
-  AlarmesApi({AppApi? appApi}) : _appApi = appApi ?? AppApi();
+  AlarmesApi({AppApi? appApi, WhatsAppApi? whatsAppApi})
+    : _appApi = appApi ?? AppApi(),
+      _whatsAppApi = whatsAppApi ?? WhatsAppApi();
 
   final AppApi _appApi;
+  final WhatsAppApi _whatsAppApi;
 
   Future<void> salvarNovoAlarme({
     required String nome,
@@ -182,18 +186,37 @@ class AlarmesApi {
       );
     }
 
-    final contatosNotificacao = await _appApi.buscarContatosNotificacaoCuidador(
-      pacienteId: uid,
-    );
+    ResultadoEnvioWhatsApp notificacao;
+    String? erroNotificacao;
+    try {
+      notificacao = await _whatsAppApi.enviarAlertaDosePerdida(
+        doseId: doseSalva['id']?.toString() ?? '',
+      );
+    } on WhatsAppException catch (erro) {
+      final incerto = const {
+        'TIMEOUT',
+        'NETWORK_ERROR',
+        'INVALID_RESPONSE',
+      }.contains(erro.codigo);
+      notificacao = ResultadoEnvioWhatsApp(
+        status: incerto ? 'unknown' : 'failed',
+      );
+      erroNotificacao = erro.codigo;
+    } catch (_) {
+      notificacao = const ResultadoEnvioWhatsApp(status: 'unknown');
+      erroNotificacao = 'NETWORK_ERROR';
+    }
 
     return {
       'sucesso': true,
       'dose': doseSalva,
-      'precisa_notificar': true,
-      'motivo': 'Paciente nao confirmou o medicamento apos os avisos do alarme.',
+      'notificacao': notificacao.toJson(),
+      'mensagem_notificacao': notificacao.mensagemAlerta,
+      if (erroNotificacao != null) 'erro_notificacao': erroNotificacao,
+      'motivo':
+          'Paciente nao confirmou o medicamento apos os avisos do alarme.',
       'medicamento': medicamentoNome,
       'horario_previsto': horarioPrevisto.toIso8601String(),
-      'destinatarios': contatosNotificacao,
     };
   }
 

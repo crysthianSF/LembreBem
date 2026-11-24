@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:lembrebem/backend/auth_api.dart';
 import 'package:lembrebem/backend/cuidador_api.dart';
+import 'package:lembrebem/backend/whatsapp_api.dart';
 import 'package:lembrebem/telas/fundo_decorado.dart';
 import 'package:lembrebem/telas/tela_inicial.dart';
 import 'package:lembrebem/widgets/skeleton_box.dart';
@@ -9,7 +10,10 @@ import 'package:lembrebem/widgets/componentes.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class TelaCuidadorPainel extends StatefulWidget {
-  const TelaCuidadorPainel({super.key});
+  const TelaCuidadorPainel({super.key, this.cuidadorApi, this.whatsAppApi});
+
+  final CuidadorApi? cuidadorApi;
+  final WhatsAppApi? whatsAppApi;
 
   @override
   State<TelaCuidadorPainel> createState() => _TelaCuidadorPainelState();
@@ -18,8 +22,10 @@ class TelaCuidadorPainel extends StatefulWidget {
 enum _AbaCuidador { pacientes, relatorios, perfil }
 
 class _TelaCuidadorPainelState extends State<TelaCuidadorPainel> {
-  final CuidadorApi _cuidadorApi = CuidadorApi();
+  late final CuidadorApi _cuidadorApi = widget.cuidadorApi ?? CuidadorApi();
+  late final WhatsAppApi _whatsAppApi = widget.whatsAppApi ?? WhatsAppApi();
   final AuthApi _authApi = AuthApi();
+  bool _enviandoRelatorio = false;
 
   _AbaCuidador _abaAtiva = _AbaCuidador.pacientes;
 
@@ -300,62 +306,49 @@ class _TelaCuidadorPainelState extends State<TelaCuidadorPainel> {
   Future<void> _enviarRelatorioWhatsApp(
     Map<String, dynamic> paciente,
     int dias,
-    String rotuloPeriodo,
   ) async {
+    if (_enviandoRelatorio) return;
     final id = paciente['id']?.toString() ?? '';
-    final nome = paciente['nome']?.toString() ?? 'Paciente';
-
-    List<Map<String, dynamic>> doses;
+    setState(() => _enviandoRelatorio = true);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Solicitando envio do relatório…'),
+        duration: Duration(seconds: 45),
+      ),
+    );
     try {
-      doses = await _cuidadorApi.listarDosesPeriodo(pacienteId: id, dias: dias);
-    } catch (_) {
-      doses = _dosesHoje[id] ?? [];
-    }
-
-    final tomadas =
-        doses
-            .where((d) => d['status'] == 'tomada' || d['status'] == 'atrasada')
-            .toList();
-    final perdidas = doses.where((d) => d['status'] == 'perdida').toList();
-    final total = doses.length;
-    final indice = total == 0 ? 0 : ((tomadas.length / total) * 100).round();
-
-    final linhas = <String>[
-      '*Relatório de Acompanhamento LembreBem* 📋',
-      '',
-      '*Paciente:* $nome',
-      '*Período:* $rotuloPeriodo',
-      '',
-      '✅ *Medicamentos Tomados:* ${tomadas.length}',
-      '❌ *Atrasados ou Não Tomados:* ${perdidas.length}',
-      '',
-      '📊 *Resumo de Adesão Clínica:*',
-      '*Índice de Conclusão:* $indice%',
-      '*Doses tomadas no horário:* ${tomadas.length}',
-      '*Doses não registradas:* ${perdidas.length}',
-    ];
-
-    final telefone =
-        paciente['telefone']?.toString().replaceAll(RegExp(r'[^0-9]'), '') ??
-        '';
-    final texto = Uri.encodeComponent(linhas.join('\n'));
-    final uri =
-        telefone.isEmpty
-            ? Uri.parse('https://wa.me/?text=$texto')
-            : Uri.parse('https://wa.me/55$telefone?text=$texto');
-
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
+      final resultado = await _whatsAppApi.enviarRelatorio(
+        pacienteId: id,
+        dias: dias,
+      );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível abrir o WhatsApp.')),
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(content: Text(resultado.mensagemRelatorio)),
         );
       }
+    } catch (erro) {
+      if (mounted) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              erro is WhatsAppException
+                  ? erro.mensagem
+                  : 'Não foi possível solicitar o envio agora. Tente novamente.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _enviandoRelatorio = false);
     }
   }
 
   void _escolherPeriodoWhatsApp(Map<String, dynamic> paciente) {
+    if (_enviandoRelatorio) return;
     showDialog<void>(
       context: context,
       builder: (contexto) {
@@ -380,12 +373,14 @@ class _TelaCuidadorPainelState extends State<TelaCuidadorPainel> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Período do Relatório',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1F2937),
+                          const Expanded(
+                            child: Text(
+                              'Período do Relatório',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1F2937),
+                              ),
                             ),
                           ),
                           GestureDetector(
@@ -476,11 +471,11 @@ class _TelaCuidadorPainelState extends State<TelaCuidadorPainel> {
                         cor: corSucesso,
                         icone: Icons.send,
                         onPressed: () {
+                          if (_enviandoRelatorio) return;
                           Navigator.pop(contexto);
                           _enviarRelatorioWhatsApp(
                             paciente,
                             opcoes[selecionado].$2,
-                            opcoes[selecionado].$1,
                           );
                         },
                       ),
@@ -591,6 +586,7 @@ class _TelaCuidadorPainelState extends State<TelaCuidadorPainel> {
                         const SizedBox(height: 16),
                         BotaoPrimario(
                           texto: 'Enviar relatório via WhatsApp',
+                          carregando: _enviandoRelatorio,
                           cor: corSucesso,
                           icone: Icons.chat_outlined,
                           onPressed: () {

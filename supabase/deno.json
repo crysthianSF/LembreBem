@@ -1,0 +1,7 @@
+{
+  "compilerOptions": { "strict": true },
+  "tasks": {
+    "test": "deno test --allow-env --allow-read functions tests",
+    "check": "deno check functions/enviar-relatorio-whatsapp/index.ts functions/enviar-alerta-whatsapp/index.ts functions/whatsapp-webhook/index.ts"
+  }
+}

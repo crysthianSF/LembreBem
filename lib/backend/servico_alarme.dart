@@ -8,11 +8,9 @@ import 'package:lembrebem/modelo_alarme.dart';
 import 'package:lembrebem/telas/tela_alarme_disparado.dart';
 
 class ServicoAlarme {
-  ServicoAlarme._interno({
-    AppApi? appApi,
-    AlarmesApi? alarmesApi,
-  })  : _appApi = appApi ?? AppApi(),
-        _alarmesApi = alarmesApi ?? AlarmesApi();
+  ServicoAlarme._interno({AppApi? appApi, AlarmesApi? alarmesApi})
+    : _appApi = appApi ?? AppApi(),
+      _alarmesApi = alarmesApi ?? AlarmesApi();
 
   static final ServicoAlarme instancia = ServicoAlarme._interno();
   factory ServicoAlarme({AppApi? appApi, AlarmesApi? alarmesApi}) {
@@ -84,10 +82,16 @@ class ServicoAlarme {
       }
 
       final dados = await _appApi.listarAlarmesDoUsuario(usuarioId: userId);
-      _alarmesAtivos = dados
-          .map((json) => Alarme.fromJson(json))
-          .where((alarme) => alarme.ativado && alarme.id != null && alarme.id!.isNotEmpty)
-          .toList();
+      _alarmesAtivos =
+          dados
+              .map((json) => Alarme.fromJson(json))
+              .where(
+                (alarme) =>
+                    alarme.ativado &&
+                    alarme.id != null &&
+                    alarme.id!.isNotEmpty,
+              )
+              .toList();
     } catch (_) {
       // Falha silenciosa em caso de sem rede; mantém lista em memória
     }
@@ -109,25 +113,28 @@ class ServicoAlarme {
     // 1. Verifica se há sonecas ativas que atingiram o horário de despertar (2ª chamada)
     final sonecasParaTocar = <String>[];
     _sonecasAtivas.forEach((alarmeId, horarioDespertar) {
-      if (agora.isAfter(horarioDespertar) || agora.isAtSameMomentAs(horarioDespertar)) {
+      if (agora.isAfter(horarioDespertar) ||
+          agora.isAtSameMomentAs(horarioDespertar)) {
         sonecasParaTocar.add(alarmeId);
       }
     });
 
     for (final alarmeId in sonecasParaTocar) {
       _sonecasAtivas.remove(alarmeId);
-      final alarme = _alarmesSoneca.remove(alarmeId) ??
+      final alarme =
+          _alarmesSoneca.remove(alarmeId) ??
           _alarmesAtivos.firstWhere(
             (a) => a.id == alarmeId,
-            orElse: () => Alarme(
-              id: alarmeId,
-              nome: 'Medicamento',
-              observacoes: '',
-              horario: TimeOfDay(hour: agora.hour, minute: agora.minute),
-              diasDeUso: '',
-              ativado: true,
-              intervalo: '',
-            ),
+            orElse:
+                () => Alarme(
+                  id: alarmeId,
+                  nome: 'Medicamento',
+                  observacoes: '',
+                  horario: TimeOfDay(hour: agora.hour, minute: agora.minute),
+                  diasDeUso: '',
+                  ativado: true,
+                  intervalo: '',
+                ),
           );
 
       await dispararAlarme(alarme, tentativa: 2, dataReferencia: agora);
@@ -139,12 +146,14 @@ class ServicoAlarme {
       final alarmeId = alarme.id;
       if (alarmeId == null || alarmeId.isEmpty) continue;
 
-      if (alarme.horario.hour == agora.hour && alarme.horario.minute == agora.minute) {
+      if (alarme.horario.hour == agora.hour &&
+          alarme.horario.minute == agora.minute) {
         if (!_alarmeDeveTocarHoje(alarme.diasDeUso, agora)) {
           continue;
         }
 
-        final chaveDisparo = '${alarmeId}_${agora.year}_${agora.month}_${agora.day}_${agora.hour}_${agora.minute}';
+        final chaveDisparo =
+            '${alarmeId}_${agora.year}_${agora.month}_${agora.day}_${agora.hour}_${agora.minute}';
         if (_disparosRecentes.contains(chaveDisparo)) {
           continue;
         }
@@ -200,31 +209,32 @@ class ServicoAlarme {
       final resultado = await navigator.push(
         MaterialPageRoute<String>(
           fullscreenDialog: true,
-          builder: (_) => TelaAlarmeDisparado(
-            alarmeId: alarmeId,
-            medicamentoNome: alarme.nome,
-            horarioFormatado: horaFormatada,
-            observacoes: alarme.observacoes,
-            tentativa: tentativa,
-            horarioPrevisto: agora,
-            aoTomarMedicamento: () async {
-              await _alarmesApi.registrarDoseTomada(
+          builder:
+              (_) => TelaAlarmeDisparado(
                 alarmeId: alarmeId,
                 medicamentoNome: alarme.nome,
+                horarioFormatado: horaFormatada,
+                observacoes: alarme.observacoes,
+                tentativa: tentativa,
                 horarioPrevisto: agora,
-              );
-            },
-            aoPedirSoneca: (minutos) {
-              agendarSoneca(alarmeId, alarme: alarme, minutos: minutos);
-            },
-            aoEscalarCuidador: () async {
-              await _alarmesApi.registrarDosePerdidaEEscalar(
-                alarmeId: alarmeId,
-                medicamentoNome: alarme.nome,
-                horarioPrevisto: agora,
-              );
-            },
-          ),
+                aoTomarMedicamento: () async {
+                  await _alarmesApi.registrarDoseTomada(
+                    alarmeId: alarmeId,
+                    medicamentoNome: alarme.nome,
+                    horarioPrevisto: agora,
+                  );
+                },
+                aoPedirSoneca: (minutos) {
+                  agendarSoneca(alarmeId, alarme: alarme, minutos: minutos);
+                },
+                aoEscalarCuidador: () async {
+                  return await _alarmesApi.registrarDosePerdidaEEscalar(
+                    alarmeId: alarmeId,
+                    medicamentoNome: alarme.nome,
+                    horarioPrevisto: agora,
+                  );
+                },
+              ),
         ),
       );
 
@@ -234,7 +244,8 @@ class ServicoAlarme {
         _tentativasPorAlarme.remove(alarmeId);
       } else if (resultado != null && resultado.startsWith('soneca')) {
         final partes = resultado.split('_');
-        final minutos = partes.length > 1 ? (int.tryParse(partes[1]) ?? 10) : 10;
+        final minutos =
+            partes.length > 1 ? (int.tryParse(partes[1]) ?? 10) : 10;
         agendarSoneca(alarmeId, alarme: alarme, minutos: minutos);
       } else if (resultado == 'perdida') {
         _sonecasAtivas.remove(alarmeId);
@@ -291,7 +302,10 @@ class ServicoAlarme {
     if (dias.contains('qua') && weekday == DateTime.wednesday) return true;
     if (dias.contains('qui') && weekday == DateTime.thursday) return true;
     if (dias.contains('sex') && weekday == DateTime.friday) return true;
-    if ((dias.contains('sab') || dias.contains('sáb')) && weekday == DateTime.saturday) return true;
+    if ((dias.contains('sab') || dias.contains('sáb')) &&
+        weekday == DateTime.saturday) {
+      return true;
+    }
     if (dias.contains('dom') && weekday == DateTime.sunday) return true;
 
     return true;
